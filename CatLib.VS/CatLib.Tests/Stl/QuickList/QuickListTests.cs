@@ -11,9 +11,10 @@
 
 using System;
 using System.Collections.Generic;
+using CatLib.API;
 using CatLib.Stl;
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR || NUNIT
 using NUnit.Framework;
 using TestClass = NUnit.Framework.TestFixtureAttribute;
 using TestMethod = NUnit.Framework.TestAttribute;
@@ -61,7 +62,7 @@ namespace CatLib.Tests.Stl
         [TestMethod]
         public void UnShiftPopTest()
         {
-            var num = 500000;
+            var num = 50000;
             var lst = new QuickList<int>();
             var rand = new Random();
             var lst2 = new List<int>();
@@ -157,14 +158,17 @@ namespace CatLib.Tests.Stl
             }
 
             int n = 0;
-            foreach (var val in master)
+            ExceptionAssert.Throws<InvalidOperationException>(() =>
             {
-                if (n < 20)
+                foreach (var val in master)
                 {
-                    master.Push(10 + n);
+                    if (n < 20)
+                    {
+                        master.Push(10 + n);
+                    }
+                    Assert.AreEqual(n++, val);
                 }
-                Assert.AreEqual(n++, val);
-            }
+            });
         }
 
         /// <summary>
@@ -238,10 +242,30 @@ namespace CatLib.Tests.Stl
             }
 
             var elements = master.GetRange(10, 100);
-            Assert.AreEqual(90, elements.Length);
+            Assert.AreEqual(91, elements.Length);
             for (var i = 10; i < 100; i++)
             {
                 Assert.AreEqual(i, elements[i - 10]);
+            }
+        }
+
+        /// <summary>
+        /// 获取区间，跳过区块测试
+        /// </summary>
+        [TestMethod]
+        public void GetRangeBlockTest()
+        {
+            var master = new QuickList<int>(20);
+            for (var i = 0; i < 256; i++)
+            {
+                master.Push(i);
+            }
+
+            var elements = master.GetRange(100, 200);
+            Assert.AreEqual(101, elements.Length);
+            for (var i = 100; i < 200; i++)
+            {
+                Assert.AreEqual(i, elements[i - 100]);
             }
         }
 
@@ -256,11 +280,6 @@ namespace CatLib.Tests.Stl
             {
                 master.Push(i);
             }
-
-            ExceptionAssert.Throws<ArgumentOutOfRangeException>(() =>
-            {
-                master.GetRange(-1, 10);
-            });
 
             ExceptionAssert.Throws<ArgumentOutOfRangeException>(() =>
             {
@@ -497,6 +516,61 @@ namespace CatLib.Tests.Stl
         }
 
         /// <summary>
+        /// 合并结点前合并测试
+        /// </summary>
+        [TestMethod]
+        public void MergeNodeBeforeTest()
+        {
+            var master = new QuickList<int>(10);
+            //node 1
+            master.Push(0);
+            master.Push(1);
+            master.Push(2);
+            master.Push(3);
+            master.Push(4);
+            master.Push(5);
+            master.Push(6);
+            master.Push(7);
+            master.Push(8);
+            master.Push(9);
+
+            //node 2 
+            master.Push(10);
+            master.Push(11);
+            master.Push(12);
+            master.Push(13);
+            master.Push(14);
+            master.Push(15);
+            master.Push(16);
+            master.Push(17);
+            master.Push(18);
+            master.Push(19);
+
+            //node 3
+            master.Push(20);
+            master.Push(21);
+            master.Push(22);
+            master.Push(23);
+            master.Push(24);
+            master.Push(25);
+            master.Push(26);
+            master.Push(27);
+            master.Push(28);
+            master.Push(29);
+
+
+            master.InsertBefore(12, 777);
+            master.InsertBefore(12, 666);
+            master.InsertBefore(12, 555);
+
+            Assert.AreEqual(4, master.Length);
+
+            master.InsertBefore(555, 444);
+
+            Assert.AreEqual(4, master.Length);
+        }
+
+        /// <summary>
         /// Foreach遍历列表
         /// </summary>
         [TestMethod]
@@ -585,7 +659,7 @@ namespace CatLib.Tests.Stl
         [TestMethod]
         public void TrimTest()
         {
-            foreach (var cap in new[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15})
+            foreach (var cap in new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 })
             {
                 var master = new QuickList<int>(cap);
                 master.Push(0);
@@ -614,6 +688,40 @@ namespace CatLib.Tests.Stl
         }
 
         /// <summary>
+        /// 裁切的起始元素和终止元素一致测试
+        /// </summary>
+        [TestMethod]
+        public void TrimToOneTest()
+        {
+            foreach (var cap in new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 })
+            {
+                var master = new QuickList<int>(cap);
+                master.Push(0);
+                master.Push(1);
+                master.Push(2);
+                master.Push(3);
+                master.Push(4);
+                master.Push(5);
+                master.Push(6);
+                master.Push(7);
+                master.Push(8);
+                master.Push(9);
+                master.Push(10);
+                master.Push(11);
+                master.Push(12);
+
+                Assert.AreEqual(12, master.Trim(4, 4));
+                var i = 4;
+                foreach (var v in master)
+                {
+                    Assert.AreEqual(i++, v);
+                }
+                Assert.AreEqual(1, master.Count);
+                Assert.AreEqual(5, i);
+            }
+        }
+
+        /// <summary>
         /// 裁剪边界测试
         /// </summary>
         [TestMethod]
@@ -636,6 +744,290 @@ namespace CatLib.Tests.Stl
             for (var i = 0; i < 255; i++)
             {
                 master.Push(i);
+            }
+        }
+
+        [TestMethod]
+        public void FindNotExistsNode()
+        {
+            var master = new QuickList<int>(5);
+            for (var i = 0; i < 255; i++)
+            {
+                master.Push(i);
+            }
+
+            master.InsertAfter(888, 888);
+            Assert.AreEqual(255, master.Count);
+        }
+
+        [TestMethod]
+        public void FindOutArgsIndexNode()
+        {
+            var master = new QuickList<int>(5);
+            for (var i = 0; i < 255; i++)
+            {
+                master.Push(i);
+            }
+
+            ExceptionAssert.Throws<ArgumentOutOfRangeException>(() =>
+            {
+                var v = master[256];
+            });
+
+            ExceptionAssert.Throws<ArgumentOutOfRangeException>(() =>
+            {
+                var v = master[-256];
+            });
+        }
+
+        /// <summary>
+        /// 尾部插入测试
+        /// </summary>
+        [TestMethod]
+        public void InsertNodeAtTailTest()
+        {
+            var master = new QuickList<int>(5);
+            for (var i = 0; i < 255; i++)
+            {
+                master.Push(i);
+            }
+
+            master.Remove(5);
+            master.InsertAfter(4, 999);
+
+            Assert.AreEqual(999, master[5]);
+        }
+
+        /// <summary>
+        /// 头部插入测试
+        /// </summary>
+        [TestMethod]
+        public void InsertNodeAtHeaderTest()
+        {
+            var master = new QuickList<int>(5);
+            for (var i = 0; i < 255; i++)
+            {
+                master.Push(i);
+            }
+
+            master.Remove(4);
+            master.InsertBefore(5, 999);
+
+            Assert.AreEqual(999, master[4]);
+        }
+
+        /// <summary>
+        /// 结点是满的然后插入
+        /// </summary>
+        [TestMethod]
+        public void FullNodeAndInsert()
+        {
+            var master = new QuickList<int>(5);
+            for (var i = 0; i < 255; i++)
+            {
+                master.Push(i);
+            }
+            master.InsertBefore(5, 999);
+            Assert.AreEqual(999, master[5]);
+
+            master = new QuickList<int>(5);
+            for (var i = 0; i < 255; i++)
+            {
+                master.Push(i);
+            }
+            master.InsertAfter(4, 999);
+            Assert.AreEqual(999, master[5]);
+        }
+
+        /// <summary>
+        /// 空内容Pop
+        /// </summary>
+        [TestMethod]
+        public void EmptyListPop()
+        {
+            var master = new QuickList<object>();
+            Assert.AreEqual(null, master.Pop());
+        }
+
+        /// <summary>
+        /// 空内容Pop
+        /// </summary>
+        [TestMethod]
+        public void EmptyListShift()
+        {
+            var master = new QuickList<object>();
+            Assert.AreEqual(null, master.Shift());
+        }
+
+        /// <summary>
+        /// 找不到元素时的插入测试
+        /// </summary>
+        [TestMethod]
+        public void NotFindToInsterBefore()
+        {
+            var master = new QuickList<int>();
+            master.InsertBefore(999, 199);
+            Assert.AreEqual(0, master.Count);
+        }
+
+        /// <summary>
+        /// 根据下标设定值
+        /// </summary>
+        [TestMethod]
+        public void SetListValueByIndex()
+        {
+            var master = new QuickList<int>(5);
+            for (var i = 0; i < 255; i++)
+            {
+                master.Push(i);
+            }
+
+            master[0] = 999;
+            master[128] = 999;
+            master[254] = 999;
+
+            Assert.AreEqual(999, master[0]);
+            Assert.AreEqual(999, master[128]);
+            Assert.AreEqual(999, master[254]);
+        }
+
+        /// <summary>
+        /// 从尾部开始移除指定数量的元素
+        /// </summary>
+        [TestMethod]
+        public void RemovWithCountByTail()
+        {
+            var master = new QuickList<int>(5);
+            for (var i = 0; i < 255; i++)
+            {
+                master.Push(i);
+            }
+
+            master.Push(255);
+            master.Push(255);
+            master.Push(255);
+            master.Push(255);
+
+            master.Remove(255, -3);
+
+            Assert.AreEqual(255, master[255]);
+            Assert.AreEqual(256, master.Count);
+        }
+
+        /// <summary>
+        /// 获取同步
+        /// </summary>
+        [TestMethod]
+        public void GetSyncRootTest()
+        {
+            var master1 = new QuickList<int>();
+            var master2 = new QuickList<int>();
+
+            Assert.AreNotSame(master1, master2);
+        }
+
+        /// <summary>
+        /// 空的列表测试
+        /// </summary>
+        [TestMethod]
+        public void GetRangeEmptyListTest()
+        {
+            var master = new QuickList<int>(5);
+            Assert.AreEqual(0, master.GetRange(-1, 100).Length);
+        }
+
+        /// <summary>
+        /// 清空测试
+        /// </summary>
+        [TestMethod]
+        public void ClearTest()
+        {
+            var master = new QuickList<int>(5);
+            for (var i = 0; i < 255; i++)
+            {
+                master.Push(i);
+            }
+
+            master.Clear();
+
+            for (var i = 0; i < 255; i++)
+            {
+                master.Push(i);
+            }
+
+            Assert.AreEqual(255 / 5, master.Length);
+            Assert.AreEqual(255, master.Count);
+            for (var i = 0; i < 255; i++)
+            {
+                Assert.AreEqual(i, master[i]);
+            }
+        }
+
+        /// <summary>
+        /// 边界测试
+        /// </summary>
+        [TestMethod]
+        public void BoundFirstTest()
+        {
+            var master = new QuickList<int>(5);
+            ExceptionAssert.DoesNotThrow(() =>
+            {
+                master.First();
+            });
+        }
+
+        /// <summary>
+        /// 边界测试
+        /// </summary>
+        [TestMethod]
+        public void BoundLastTest()
+        {
+            var master = new QuickList<int>(5);
+            ExceptionAssert.DoesNotThrow(() =>
+            {
+                master.Last();
+            });
+        }
+
+        /// <summary>
+        /// 头尾测试
+        /// </summary>
+        [TestMethod]
+        public void FirstLastTest()
+        {
+            var master = new QuickList<int>(5);
+            for (var i = 0; i < 255; i++)
+            {
+                master.Push(i);
+            }
+
+            Assert.AreEqual(0, master.First());
+            Assert.AreEqual(254, master.Last());
+
+            for (var i = 0; i < 255; i++)
+            {
+                master.Shift();
+                if (i < 254)
+                {
+                    Assert.AreEqual(i + 1, master.First());
+                }
+            }
+
+            Assert.AreEqual(0, master.Count);
+
+            master = new QuickList<int>(5);
+            for (var i = 0; i < 255; i++)
+            {
+                master.Push(i);
+            }
+
+            for (var i = 0; i < 255; i++)
+            {
+                if (i < 254)
+                {
+                    Assert.AreEqual(254  - i, master.Last());
+                }
+                Assert.AreEqual(254 - i, master.Pop());
             }
         }
     }

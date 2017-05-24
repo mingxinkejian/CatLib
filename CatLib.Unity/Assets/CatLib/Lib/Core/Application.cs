@@ -28,7 +28,7 @@ namespace CatLib
         /// <summary>
         /// CatLib框架版本
         /// </summary>
-        public const string VERSION = "1.0.0";
+        private const string VERSION = "1.0.0";
 
         /// <summary>
         /// CatLib版本号
@@ -116,11 +116,19 @@ namespace CatLib
         /// <summary>
         /// 引导程序
         /// </summary>
-        /// <param name="bootstraps">引导文件</param>
+        /// <param name="bootstraps">引导程序</param>
         /// <returns>CatLib实例</returns>
-        public IApplication Bootstrap(Type[] bootstraps)
+        /// <exception cref="ArgumentNullException">当引导类型为null时引发</exception>
+        /// <exception cref="RuntimeException">当引导类型没有实现<see cref="IBootstrap"/>时引发</exception>
+        public IApplication Bootstrap(params Type[] bootstraps)
         {
             Guard.Requires<ArgumentNullException>(bootstraps != null);
+
+            if (bootstrapped)
+            {
+                return this;
+            }
+
             process = StartProcess.OnBootstrap;
 
             App.Instance = this;
@@ -132,11 +140,12 @@ namespace CatLib
 
             foreach (var t in bootstraps)
             {
-                var bootstrap = this.Make<IBootstrap>(t);
-                if (bootstrap != null)
+                if (!typeof(IBootstrap).IsAssignableFrom(t))
                 {
-                    bootstrap.Bootstrap();
+                    throw new RuntimeException("Type [" + t + "] is not implements IBootstrap.");
                 }
+                var bootstrap = Make(t.ToString()) as IBootstrap;
+                bootstrap.Bootstrap();
             }
 
             bootstrapped = true;
@@ -147,6 +156,7 @@ namespace CatLib
         /// <summary>
         /// 初始化
         /// </summary>
+        /// <exception cref="RuntimeException">没有调用<c>Bootstrap(...)</c>就尝试初始化时触发</exception>
         public void Init()
         {
             if (inited)
@@ -155,14 +165,14 @@ namespace CatLib
             }
             if (!bootstrapped)
             {
-                return;
+                throw new RuntimeException("Must call Bootstrap() first.");
             }
 
             var providers = new List<ServiceProvider>(serviceProviders.Values);
 
             process = StartProcess.OnInit;
 
-            TriggerGlobal(ApplicationEvents.ON_INITING, this).Trigger();
+            TriggerGlobal(ApplicationEvents.OnIniting, this).Trigger();
 
             foreach (var serviceProvider in providers)
             {
@@ -171,7 +181,7 @@ namespace CatLib
 
             inited = true;
 
-            TriggerGlobal(ApplicationEvents.ON_INITED, this).Trigger();
+            TriggerGlobal(ApplicationEvents.OnInited, this).Trigger();
 
             StartCoroutine(StartProviderPorcess());
         }
@@ -180,24 +190,27 @@ namespace CatLib
         /// 注册服务提供者
         /// </summary>
         /// <param name="t">注册类型</param>
+        /// <exception cref="RuntimeException">服务提供商被重复注册或者服务提供商没有继承自<see cref="ServiceProvider"/></exception>
         public void Register(Type t)
         {
             Guard.Requires<ArgumentNullException>(t != null);
             if (serviceProviders.ContainsKey(t))
             {
-                return;
+                throw new RuntimeException("Provider [" + t + "] is already register.");
             }
 
-            var serviceProvider = this.Make<ServiceProvider>(t);
-            if (serviceProvider == null)
+            if (!typeof(ServiceProvider).IsAssignableFrom(t))
             {
-                return;
+                throw new RuntimeException("Type [" + t + "] is not inherit ServiceProvider.");
             }
+
+            var serviceProvider = Make(t.ToString()) as ServiceProvider;
             serviceProvider.Register();
             serviceProviders.Add(t, serviceProvider);
             if (inited)
             {
                 serviceProvider.Init();
+                StartCoroutine(serviceProvider.OnProviderProcess());
             }
         }
 
@@ -218,7 +231,7 @@ namespace CatLib
         {
             process = StartProcess.OnProviderProcess;
 
-            TriggerGlobal(ApplicationEvents.ON_PROVIDER_PROCESSING, this).Trigger();
+            TriggerGlobal(ApplicationEvents.OnProviderProcessing, this).Trigger();
 
             var providers = new List<ServiceProvider>(serviceProviders.Values);
             providers.Sort((left, right) =>
@@ -233,11 +246,11 @@ namespace CatLib
                 yield return provider.OnProviderProcess();
             }
 
-            TriggerGlobal(ApplicationEvents.ON_PROVIDER_PROCESSED, this).Trigger();
+            TriggerGlobal(ApplicationEvents.OnProviderProcessed, this).Trigger();
 
             process = StartProcess.OnComplete;
 
-            TriggerGlobal(ApplicationEvents.ON_APPLICATION_START_COMPLETE, this).Trigger();
+            TriggerGlobal(ApplicationEvents.OnApplicationStartComplete, this).Trigger();
         }
     }
 }

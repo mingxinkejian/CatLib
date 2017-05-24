@@ -2,13 +2,19 @@
 
 <p align="center">
 <a href="https://github.com/yb199478/CatLib/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" title="license-mit" /></a>
-<a href="https://github.com/yb199478/catlib/pulls"><img src="https://img.shields.io/badge/PRs-welcome-blue.svg" title="pull request welcome" /></a>
-<a href="http://catlib.io"><img src="https://img.shields.io/badge/website-up-brightgreen.svg" title="CatLib文档" /></a>
-</p>
+<a href="https://github.com/yb199478/catlib/"><img src="https://badge.fury.io/gh/catlib%2Fcatlib.svg" title="GitHub version" /></a>
+<a href="https://ci.appveyor.com/project/yb199478/catlib"><img src="https://ci.appveyor.com/api/projects/status/f12rb3x5hxvq6yr7?svg=true" title="Build status"/></a>
+<a href="https://codecov.io/gh/CatLib/CatLib">
+  <img src="https://codecov.io/gh/CatLib/CatLib/branch/master/graph/badge.svg" alt="Codecov" />
+</a>
 
-> **风险提示:** 当前框架尚未正式发布，应用于商业项目时请注意使用风险(包括但不限于不完整的单元测试,接口的变化,组件的废弃,不完善的错误提示,运行时错误). 当前版本提出的issues一般情况下会在24小时内响应。
+> **风险提示:** 当前框架尚未正式发布，应用于商业项目时请注意使用风险（审计中的组件是可以放心使用的）(包括但不限于不完整的单元测试,接口的变化,组件的废弃,不完善的错误提示,运行时错误). 当前版本提出的issues一般情况下会在24小时内响应。
 
-> **审计中的组件(通过审计的组件将会在6月发布):** Container 组件 ，Stl 组件中的(SortSet,QuickList)
+> **审计中的组件(通过审计的组件将会在6月发布):** Container 组件 , CatLib 核心 ，Stl 组件中的(SortSet,QuickList,LruCache) , FilterChain 组件 , Routing 组件 , FileSystem 组件 , Config 组件
+
+> **组件临时移除通知:** 6月100%不发布的组件已经从Master中移除，但您可以在 backup/master-20170522 分支中找到她们。
+
+> **Coming Soon:** English support
 
 ## 关于CatLib
 

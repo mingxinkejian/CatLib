@@ -4,7 +4,7 @@
  * (c) Yu Bin <support@catlib.io>
  *
  * For the full copyright and license information, please view the LICENSE
- * file that was distributed with this source code.
+ * file that was distributed with this sender code.
  *
  * Document: http://catlib.io/
  */
@@ -31,7 +31,7 @@ namespace CatLib.API
         /// </summary>
         /// <param name="bootstraps">引导程序</param>
         /// <returns>当前应用程序</returns>
-        IApplication Bootstrap(Type[] bootstraps);
+        IApplication Bootstrap(params Type[] bootstraps);
 
         /// <summary>
         /// 初始化程序
@@ -78,9 +78,9 @@ namespace CatLib.API
         /// 触发一个全局事件
         /// </summary>
         /// <param name="eventName">事件名</param>
-        /// <param name="source">触发事件的源</param>
+        /// <param name="sender">发送者</param>
         /// <returns>全局事件</returns>
-        IGlobalEvent TriggerGlobal(string eventName, object source);
+        IGlobalEvent TriggerGlobal(string eventName, object sender);
 
         /// <summary>
         /// 启动协程
@@ -93,5 +93,29 @@ namespace CatLib.API
         /// </summary>
         /// <param name="routine">协程</param>
         void StopCoroutine(IEnumerator routine);
+
+        /// <summary>
+        /// 从驱动器中卸载对象
+        /// 如果对象使用了增强接口，那么卸载对应增强接口
+        /// 从驱动器中卸载对象会引发IDestroy增强接口
+        /// </summary>
+        /// <param name="obj">对象</param>
+        void UnLoad(object obj);
+
+        /// <summary>
+        /// 如果对象实现了增强接口那么将对象装载进对应驱动器
+        /// 在装载的时候会引发IStart接口
+        /// </summary>
+        /// <param name="obj">对象</param>
+        void Load(object obj);
+
+        /// <summary>
+        /// 获取优先级，如果存在方法优先级定义那么优先返回方法的优先级
+        /// 如果不存在优先级定义那么返回<c>int.MaxValue</c>
+        /// </summary>
+        /// <param name="type">获取优先级的类型</param>
+        /// <param name="method">获取优先级的调用方法</param>
+        /// <returns>优先级</returns>
+        int GetPriorities(Type type, string method = null);
     }
 }

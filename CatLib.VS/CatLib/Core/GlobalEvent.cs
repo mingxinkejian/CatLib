@@ -4,7 +4,7 @@
  * (c) Yu Bin <support@catlib.io>
  *
  * For the full copyright and license information, please view the LICENSE
- * file that was distributed with this source code.
+ * file that was distributed with this sender code.
  *
  * Document: http://catlib.io/
  */
@@ -18,12 +18,12 @@ namespace CatLib
     /// <summary>
     /// 全局事件
     /// </summary>
-    public sealed class GlobalEvent : IGlobalEvent
+    internal sealed class GlobalEvent : IGlobalEvent
     {
         /// <summary>
         /// 事件源
         /// </summary>
-        private readonly object source;
+        private readonly object sender;
 
         /// <summary>
         /// 事件名称
@@ -44,11 +44,11 @@ namespace CatLib
         /// 构造一个全局事件
         /// </summary>
         /// <param name="eventName">事件名</param>
-        /// <param name="source">事件源</param>
-        public GlobalEvent(string eventName , object source)
+        /// <param name="sender">发送者</param>
+        public GlobalEvent(string eventName, object sender)
         {
             this.eventName = eventName;
-            this.source = source;
+            this.sender = sender;
         }
 
         /// <summary>
@@ -92,38 +92,39 @@ namespace CatLib
         /// 触发一个全局事件
         /// </summary>
         /// <param name="args">事件参数</param>
+        /// <exception cref="RuntimeException">当事件名无效时引发</exception>
         public void Trigger(EventArgs args = null)
         {
             if (string.IsNullOrEmpty(eventName))
             {
-                throw new RuntimeException("global event , event name can not be null");
+                throw new RuntimeException("Global event , event name can not be null.");
             }
 
             if ((eventLevel & EventLevel.Self) > 0)
             {
-                var guid = source as IGuid;
+                var guid = sender as IGuid;
                 if (guid != null)
                 {
-                    App.Instance.Trigger(eventName + source.GetType() + guid.Guid, source, args);
+                    App.Instance.Trigger(eventName + sender.GetType() + guid.Guid, sender, args);
                 }
             }
 
-            if (source != null && (eventLevel & EventLevel.Type) > 0)
+            if (sender != null && (eventLevel & EventLevel.Type) > 0)
             {
-                App.Instance.Trigger(eventName + source.GetType(), source, args);
+                App.Instance.Trigger(eventName + sender.GetType(), sender, args);
             }
 
             if (classInterface != null && (eventLevel & EventLevel.Interface) > 0)
             {
                 for (var i = 0; i < classInterface.Count; i++)
                 {
-                    App.Instance.Trigger(eventName + classInterface[i], source, args);
+                    App.Instance.Trigger(eventName + classInterface[i], sender, args);
                 }
             }
 
             if ((eventLevel & EventLevel.Global) > 0)
             {
-                App.Instance.Trigger(eventName, source, args);
+                App.Instance.Trigger(eventName, sender, args);
             }
         }
     }

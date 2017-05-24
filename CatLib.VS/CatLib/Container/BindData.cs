@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using CatLib.API;
 using CatLib.API.Container;
+using CatLib.Stl;
 
 namespace CatLib.Container
 {
@@ -41,11 +42,6 @@ namespace CatLib.Container
         /// 当前服务需求某个服务时可以指定给与什么服务
         /// </summary>
         private Dictionary<string, string> contextual;
-
-        /// <summary>
-        /// 拦截器列表
-        /// </summary>
-        private List<IInterception> interception;
 
         /// <summary>
         /// 父级容器
@@ -124,36 +120,6 @@ namespace CatLib.Container
         }
 
         /// <summary>
-        /// 拦截器
-        /// </summary>
-        /// <typeparam name="T">服务类型</typeparam>
-        /// <returns>服务绑定数据</returns>
-        public IBindData AddInterceptor<T>() where T : IInterception, new()
-        {
-            return AddInterceptor(new T());
-        }
-
-        /// <summary>
-        /// 拦截器
-        /// </summary>
-        /// <param name="interceptor">拦截器</param>
-        /// <returns>服务绑定数据</returns>
-        public IBindData AddInterceptor(IInterception interceptor)
-        {
-            Guard.NotNull(interceptor, "interceptor");
-            lock (syncRoot)
-            {
-                GuardIsDestroy();
-                if (interception == null)
-                {
-                    interception = new List<IInterception>();
-                }
-                interception.Add(interceptor);
-            }
-            return this;
-        }
-
-        /// <summary>
         /// 为服务设定一个别名
         /// </summary>
         /// <typeparam name="T">别名</typeparam>
@@ -209,7 +175,7 @@ namespace CatLib.Container
             Guard.NotNull(action, "action");
             if (!IsStatic)
             {
-                throw new RuntimeException("Service [" + Service + "] is not Static , can not call OnRelease(...)");
+                throw new RuntimeException("Service [" + Service + "] is not Singleton(Static) Bind , Can not call OnRelease().");
             }
             lock (syncRoot)
             {
@@ -233,15 +199,6 @@ namespace CatLib.Container
                 isDestroy = true;
                 container.UnBind(Service);
             }
-        }
-
-        /// <summary>
-        /// 获取服务的拦截器
-        /// </summary>
-        /// <returns>当前服务的拦截器</returns>
-        internal IInterception[] GetInterceptors()
-        {
-            return interception == null ? null : interception.ToArray();
         }
 
         /// <summary>
@@ -311,7 +268,7 @@ namespace CatLib.Container
                 }
                 if (contextual.ContainsKey(needs))
                 {
-                    throw new RuntimeException("needs [" + needs + "] is already exist");
+                    throw new RuntimeException("Needs [" + needs + "] is already exist.");
                 }
                 contextual.Add(needs, given);
                 return this;
@@ -325,7 +282,7 @@ namespace CatLib.Container
         {
             if (isDestroy)
             {
-                throw new RuntimeException("bind data has be destroy");
+                throw new RuntimeException("Current Instance has be mark Destroy.");
             }
         }
     }

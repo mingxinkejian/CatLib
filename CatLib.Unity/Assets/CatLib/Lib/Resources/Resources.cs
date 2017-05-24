@@ -10,13 +10,11 @@
  */
 
 using CatLib.API;
-using CatLib.API.IO;
 using CatLib.API.Resources;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
-using JetBrains.Annotations;
 
 namespace CatLib.Resources
 {
@@ -125,9 +123,10 @@ namespace CatLib.Resources
             path = PathFormat(path, type);
 
 #if UNITY_EDITOR
-            if (Env.DebugLevel == DebugLevels.Auto || Env.DebugLevel == DebugLevels.Dev)
+            if (Env.DebugLevel == DebugLevels.Auto || 
+                    Env.DebugLevel == DebugLevels.Dev)
             {
-                return MakeDefaultObjectInfo(UnityEditor.AssetDatabase.LoadAssetAtPath("Assets" + Env.ResourcesBuildPath + Path.AltDirectorySeparatorChar + path, type));
+                return MakeDefaultObjectInfo(UnityEditor.AssetDatabase.LoadAssetAtPath(Env.AssetPath.Substring(Env.AssetPath.IndexOf("Assets")) + Path.AltDirectorySeparatorChar + path, type));
             }
 #endif
 
@@ -217,7 +216,7 @@ namespace CatLib.Resources
             {
                 return App.StartCoroutine(IEnumeratorWrapper(() =>
                 {
-                    callback(new DefaultObjectWrapper(UnityEditor.AssetDatabase.LoadAssetAtPath("Assets" + Env.ResourcesBuildPath + Path.AltDirectorySeparatorChar + path, type)));
+                    callback(new DefaultObjectWrapper(UnityEditor.AssetDatabase.LoadAssetAtPath(Env.AssetPath.Substring(Env.AssetPath.IndexOf("Assets")) + Path.AltDirectorySeparatorChar + path, type)));
                 }));
             }
 #endif

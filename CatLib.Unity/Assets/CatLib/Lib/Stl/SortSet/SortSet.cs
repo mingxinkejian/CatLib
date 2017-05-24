@@ -12,6 +12,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using CatLib.API;
 using CatLib.API.Stl;
 using Random = System.Random;
 
@@ -21,7 +24,9 @@ namespace CatLib.Stl
     /// 有序集
     /// 有序集使用分数进行排序(以小到大)
     /// </summary>
-    public sealed class SortSet<TElement, TScore> : ISortSet<TElement,TScore>
+    [DebuggerDisplay("Count = {Count}")]
+    [ComVisible(false)]
+    public sealed class SortSet<TElement, TScore> : ISortSet<TElement, TScore>
         where TScore : IComparable<TScore>
     {
         /// <summary>
@@ -131,11 +136,6 @@ namespace CatLib.Stl
         }
 
         /// <summary>
-        /// 可能出现层数的默认概率
-        /// </summary>
-        private const double PROBABILITY = 0.25;
-
-        /// <summary>
         /// 同步锁
         /// </summary>
         private readonly object syncRoot = new object();
@@ -198,7 +198,8 @@ namespace CatLib.Stl
         /// </summary>
         /// <param name="probable">可能出现层数的概率系数(0-1之间的数)</param>
         /// <param name="maxLevel">最大层数</param>
-        public SortSet(double probable = PROBABILITY, int maxLevel = 32)
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="probable"/>或<paramref name="maxLevel"/>不是有效值时引发</exception>
+        public SortSet(double probable = 0.25, int maxLevel = 32)
         {
             Guard.Requires<ArgumentOutOfRangeException>(maxLevel > 0);
             Guard.Requires<ArgumentOutOfRangeException>(probable < 1);
@@ -212,6 +213,22 @@ namespace CatLib.Stl
             {
                 Level = new SkipNode.SkipNodeLevel[maxLevel]
             };
+        }
+
+        /// <summary>
+        /// 清空SortSet
+        /// </summary>
+        public void Clear()
+        {
+            for (var i = 0; i < header.Level.Length; ++i)
+            {
+                header.Level[i].Span = 0;
+                header.Level[i].Forward = null;
+            }
+            tail = null;
+            level = 1;
+            dict.Clear();
+            Count = 0;
         }
 
         /// <summary>
@@ -241,10 +258,57 @@ namespace CatLib.Stl
         }
 
         /// <summary>
+        /// 获取第一个元素
+        /// </summary>
+        /// <returns>最后一个元素</returns>
+        public TElement First()
+        {
+            return header.Level[0].Forward != null ? header.Level[0].Forward.Element : default(TElement);
+        }
+
+        /// <summary>
+        /// 获取最后一个元素
+        /// </summary>
+        /// <returns>元素</returns>
+        public TElement Last()
+        {
+            return tail != null ? tail.Element : default(TElement);
+        }
+
+        /// <summary>
+        /// 移除并返回有序集头部的元素
+        /// </summary>
+        /// <returns>元素</returns>
+        public TElement Shift()
+        {
+            TElement result;
+            if (!Remove(header.Level[0].Forward, out result))
+            {
+                throw new RuntimeException("Can not shift element , unknow error.");
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 移除并返回有序集尾部的元素
+        /// </summary>
+        /// <returns>元素</returns>
+        public TElement Pop()
+        {
+            TElement result;
+            if (!Remove(tail, out result))
+            {
+                throw new RuntimeException("Can not pop element , unknow error.");
+            }
+            return result;
+        }
+
+        /// <summary>
         /// 插入记录
         /// </summary>
         /// <param name="element">元素</param>
         /// <param name="score">分数</param>
+        /// <exception cref="ArgumentNullException"><paramref name="element"/>或<paramref name="score"/>为<c>null</c>时引发</exception>
         public void Add(TElement element, TScore score)
         {
             Guard.Requires<ArgumentNullException>(element != null);
@@ -263,6 +327,7 @@ namespace CatLib.Stl
         /// 是否包含某个元素
         /// </summary>
         /// <param name="element">元素</param>
+        /// <exception cref="ArgumentNullException"><paramref name="element"/>为<c>null</c>时引发</exception>
         public bool Contains(TElement element)
         {
             Guard.Requires<ArgumentNullException>(element != null);
@@ -274,6 +339,7 @@ namespace CatLib.Stl
         /// </summary>
         /// <param name="element">元素</param>
         /// <returns>分数，如果元素不存在则返回<c>default(TScore)</c></returns>
+        /// <exception cref="ArgumentNullException"><paramref name="element"/>为<c>null</c>时引发</exception>
         public TScore GetScore(TElement element)
         {
             Guard.Requires<ArgumentNullException>(element != null);
@@ -288,8 +354,11 @@ namespace CatLib.Stl
         /// <param name="start">起始值(包含)</param>
         /// <param name="end">结束值(包含)</param>
         /// <returns>分数值在<paramref name="start"/>(包含)和<paramref name="end"/>(包含)之间的元素数量</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="start"/>和<paramref name="end"/>区间无效时引发</exception>
         public long GetRangeCount(TScore start, TScore end)
         {
+            Guard.Requires<ArgumentNullException>(start != null);
+            Guard.Requires<ArgumentNullException>(end != null);
             Guard.Requires<ArgumentOutOfRangeException>(start.CompareTo(end) <= 0);
 
             long rank = 0, bakRank = 0;
@@ -332,6 +401,7 @@ namespace CatLib.Stl
         /// </summary>
         /// <param name="element">元素</param>
         /// <returns>是否成功</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="element"/>为<c>null</c>时引发</exception>
         public bool Remove(TElement element)
         {
             Guard.Requires<ArgumentNullException>(element != null);
@@ -346,8 +416,10 @@ namespace CatLib.Stl
         /// <param name="startRank">开始的排名(包含),排名以0为底</param>
         /// <param name="stopRank">结束的排名(包含),排名以0为底</param>
         /// <returns>被删除的元素个数</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="startRank"/>和<paramref name="stopRank"/>区间无效时引发</exception>
         public long RemoveRangeByRank(long startRank, long stopRank)
         {
+            startRank = Math.Max(startRank, 0);
             Guard.Requires<ArgumentOutOfRangeException>(startRank <= stopRank);
 
             long traversed = 0, removed = 0;
@@ -386,8 +458,11 @@ namespace CatLib.Stl
         /// <param name="startScore">开始的分数（包含）</param>
         /// <param name="stopScore">结束的分数（包含）</param>
         /// <returns>被删除的元素个数</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="startScore"/>和<paramref name="stopScore"/>区间无效时引发</exception>
         public long RemoveRangeByScore(TScore startScore, TScore stopScore)
         {
+            Guard.Requires<ArgumentNullException>(startScore != null);
+            Guard.Requires<ArgumentNullException>(stopScore != null);
             Guard.Requires<ArgumentOutOfRangeException>(startScore.CompareTo(stopScore) <= 0);
 
             long removed = 0;
@@ -423,6 +498,7 @@ namespace CatLib.Stl
         /// </summary>
         /// <param name="element">元素</param>
         /// <returns>排名排名以0为底，为-1则表示没有找到元素</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="element"/>为<c>null</c>时引发</exception>
         public long GetRank(TElement element)
         {
             Guard.Requires<ArgumentNullException>(element != null);
@@ -435,8 +511,10 @@ namespace CatLib.Stl
         /// </summary>
         /// <param name="element"></param>
         /// <returns>排名排名以0为底 , 为-1则表示没有找到元素</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="element"/>为<c>null</c>时引发</exception>
         public long GetRevRank(TElement element)
         {
+            Guard.Requires<ArgumentNullException>(element != null);
             var rank = GetRank(element);
             return rank < 0 ? rank : Count - rank - 1;
         }
@@ -447,6 +525,7 @@ namespace CatLib.Stl
         /// <param name="startRank">开始的排名(包含),排名以0为底</param>
         /// <param name="stopRank">结束的排名(包含),排名以0为底</param>
         /// <returns>元素列表</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="startRank"/>和<paramref name="stopRank"/>区间无效时引发</exception>
         public TElement[] GetElementRangeByRank(long startRank, long stopRank)
         {
             Guard.Requires<ArgumentOutOfRangeException>(startRank <= stopRank);
@@ -483,8 +562,11 @@ namespace CatLib.Stl
         /// <param name="startScore">开始的分数（包含）</param>
         /// <param name="stopScore">结束的分数（包含）</param>
         /// <returns>元素列表</returns>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="startScore"/>和<paramref name="stopScore"/>区间无效时引发</exception>
         public TElement[] GetElementRangeByScore(TScore startScore, TScore stopScore)
         {
+            Guard.Requires<ArgumentNullException>(startScore != null);
+            Guard.Requires<ArgumentNullException>(stopScore != null);
             Guard.Requires<ArgumentOutOfRangeException>(startScore.CompareTo(stopScore) <= 0);
 
             var cursor = header;
@@ -517,24 +599,24 @@ namespace CatLib.Stl
         /// <returns>元素</returns>
         public TElement GetElementByRank(long rank)
         {
-            if (rank >= Count)
-            {
-                return default(TElement);
-            }
+            rank = Math.Min(Math.Max(0, rank), Count);
             rank += 1;
             long traversed = 0;
             var cursor = header;
-            for (var i = level - 1; i >= 0; i--)
+            if (cursor != null)
             {
-                while (cursor.Level[i].Forward != null &&
-                        (traversed + cursor.Level[i].Span) <= rank)
+                for (var i = level - 1; i >= 0; i--)
                 {
-                    traversed += cursor.Level[i].Span;
-                    cursor = cursor.Level[i].Forward;
-                }
-                if (traversed == rank)
-                {
-                    return cursor.Element;
+                    while (cursor.Level[i].Forward != null &&
+                           (traversed + cursor.Level[i].Span) <= rank)
+                    {
+                        traversed += cursor.Level[i].Span;
+                        cursor = cursor.Level[i].Forward;
+                    }
+                    if (traversed == rank)
+                    {
+                        return cursor.Element;
+                    }
                 }
             }
             return default(TElement);
@@ -632,6 +714,29 @@ namespace CatLib.Stl
             }
 
             ++Count;
+        }
+
+        /// <summary>
+        /// 移除元素
+        /// </summary>
+        /// <param name="node">节点</param>
+        /// <param name="element">元素</param>
+        /// <returns>移除的元素</returns>
+        private bool Remove(SkipNode node, out TElement element)
+        {
+            if (node == null)
+            {
+                element = default(TElement);
+                return false;
+            }
+            var result = node.Element;
+            if (!Remove(node.Element, node.Score))
+            {
+                element = default(TElement);
+                return false;
+            }
+            element = result;
+            return true;
         }
 
         /// <summary>

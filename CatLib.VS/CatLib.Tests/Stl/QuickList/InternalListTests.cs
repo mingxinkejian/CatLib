@@ -11,7 +11,7 @@
 
 using CatLib.Stl;
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR || NUNIT
 using NUnit.Framework;
 using TestClass = NUnit.Framework.TestFixtureAttribute;
 using TestMethod = NUnit.Framework.TestAttribute;
@@ -31,6 +31,18 @@ namespace CatLib.Tests.Stl
         private class InternalTestClass
         {
             public int Val;
+        }
+
+        /// <summary>
+        /// 是否被删除
+        /// </summary>
+        [TestMethod]
+        public void IsDelete()
+        {
+            var list = new InternalList<InternalTestClass>(4);
+            Assert.AreEqual(false, list.IsDelete);
+            list.IsDelete = true;
+            Assert.AreEqual(true, list.IsDelete);
         }
 
         /// <summary>

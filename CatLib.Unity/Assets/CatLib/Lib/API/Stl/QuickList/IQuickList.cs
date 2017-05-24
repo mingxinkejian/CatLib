@@ -104,5 +104,22 @@ namespace CatLib.API.Stl
         /// 反转遍历顺序(并不是反转整个列表)
         /// </summary>
         void ReverseForeach();
+
+        /// <summary>
+        /// 清空快速列表
+        /// </summary>
+        void Clear();
+
+        /// <summary>
+        /// 获取第一个元素
+        /// </summary>
+        /// <returns>第一个元素</returns>
+        TElement First();
+
+        /// <summary>
+        /// 获取最后一个元素
+        /// </summary>
+        /// <returns>最后一个元素</returns>
+        TElement Last();
     }
 }

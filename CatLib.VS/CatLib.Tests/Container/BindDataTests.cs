@@ -14,7 +14,7 @@ using System.Collections.Generic;
 using CatLib.API;
 using CatLib.API.Container;
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR || NUNIT
 using NUnit.Framework;
 using TestClass = NUnit.Framework.TestFixtureAttribute;
 using TestMethod = NUnit.Framework.TestAttribute;
@@ -83,79 +83,6 @@ namespace CatLib.Tests.Container
             Assert.AreEqual("abc", bindData.GetContextual("need1"));
             Assert.AreEqual(typeof(BindDataTest).ToString(), bindData.GetContextual("need2"));
             Assert.AreEqual("empty", bindData.GetContextual("empty"));
-        }
-        #endregion
-
-        #region Interceptor
-        /// <summary>
-        /// 添加拦截器 - 拦截器类
-        /// </summary>
-        private class AddInterceptorClass : IInterception
-        {
-            /// <summary>
-            /// 拦截器是否生效
-            /// </summary>
-            public bool Enable
-            {
-                get { return true; }
-            }
-
-            /// <summary>
-            /// 必须的属性类型才会被拦截
-            /// </summary>
-            /// <returns>属性列表</returns>
-            public IEnumerable<Type> GetRequiredAttr()
-            {
-                return Type.EmptyTypes;
-            }
-
-            /// <summary>
-            /// 拦截器方案
-            /// </summary>
-            /// <param name="methodInvoke">方法调用</param>
-            /// <param name="next">下一个拦截器</param>
-            /// <returns>拦截返回值</returns>
-            public object Interception(IMethodInvoke methodInvoke, Func<object> next)
-            {
-                return next();
-            }
-        }
-
-        /// <summary>
-        /// 是否能够添加拦截器
-        /// </summary>
-        [TestMethod]
-        public void CanAddInterceptor()
-        {
-            var container = new CatLib.Container.Container();
-            var bindData = new CatLib.Container.BindData(container, "CanAddInterceptor", (app, param) => "hello world", false);
-
-            var newInterceptorClass = new AddInterceptorClass();
-            bindData.AddInterceptor<AddInterceptorClass>();
-            bindData.AddInterceptor(newInterceptorClass);
-
-            var interceptor = bindData.GetInterceptors();
-
-            Assert.AreNotEqual(null, interceptor);
-            Assert.AreEqual(2, interceptor.Length);
-            Assert.AreSame(typeof(AddInterceptorClass), interceptor[0].GetType());
-            Assert.AreSame(interceptor[1], newInterceptorClass);
-            Assert.AreNotSame(interceptor[0], interceptor[1]);
-        }
-
-        /// <summary>
-        /// 检查是否可以添加非法的拦截器
-        /// </summary>
-        [TestMethod]
-        public void CheckAddIllegalInterceptor()
-        {
-            var container = new CatLib.Container.Container();
-            var bindData = new CatLib.Container.BindData(container, "CheckAddIllegalInterceptor", (app, param) => "hello world", false);
-
-            ExceptionAssert.Throws<ArgumentNullException>(() =>
-            {
-                bindData.AddInterceptor(null);
-            });
         }
         #endregion
 
@@ -308,6 +235,26 @@ namespace CatLib.Tests.Container
                 bindData.Alias("hello");
             });
         }
+        #endregion
+
+        #region AddContextual
+
+        /// <summary>
+        /// 重复写入上下文
+        /// </summary>
+        [TestMethod]
+        public void AddContextualRepeat()
+        {
+            var container = new CatLib.Container.Container();
+            var bindData = new CatLib.Container.BindData(container, "AddContextualRepeat", (app, param) => "hello world", false);
+
+            bindData.AddContextual("service", "service given");
+            ExceptionAssert.Throws<RuntimeException>(() =>
+            {
+                bindData.AddContextual("service", "service given");
+            });
+        }
+
         #endregion
     }
 }
