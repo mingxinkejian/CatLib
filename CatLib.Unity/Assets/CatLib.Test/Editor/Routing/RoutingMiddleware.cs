@@ -9,8 +9,9 @@
  * Document: http://catlib.io/
  */
 
-using CatLib.API.FilterChain;
+using CatLib.API.Stl;
 using CatLib.API.Routing;
+using CatLib.Stl;
 
 namespace CatLib.Tests.Routing
 {
@@ -24,8 +25,7 @@ namespace CatLib.Tests.Routing
         {
             get
             {
-                var filterChain = App.Instance.Make<IFilterChain>();
-                var filter = filterChain.Create<IRequest, IResponse>();
+                var filter = new FilterChain<IRequest, IResponse>();
                 filter.Add((req, res, next) =>
                 {
                     next(req, res);

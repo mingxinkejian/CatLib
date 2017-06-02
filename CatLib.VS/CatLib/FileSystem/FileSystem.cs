@@ -18,7 +18,7 @@ namespace CatLib.FileSystem
     /// <summary>
     /// 文件系统
     /// </summary>
-    public sealed class FileSystem : IFileSystem
+    internal sealed class FileSystem : IFileSystem
     {
         /// <summary>
         /// 文件系统适配器
@@ -99,9 +99,9 @@ namespace CatLib.FileSystem
         /// 创建文件夹
         /// </summary>
         /// <param name="path">文件夹路径</param>
-        public void CreateDir(string path)
+        public void MakeDir(string path)
         {
-            adapter.CreateDir(path);
+            adapter.MakeDir(path);
         }
 
         /// <summary>

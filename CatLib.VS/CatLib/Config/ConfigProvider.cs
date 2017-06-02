@@ -35,12 +35,11 @@ namespace CatLib.Config
         {
             App.Singleton<ConfigManager>().Alias<IConfigManager>().OnResolving((bind, obj) =>
             {
-                if (obj == null)
+                var configManager = obj as ConfigManager;
+                if (configManager == null)
                 {
                     return null;
                 }
-
-                var configManager = obj as ConfigManager;
 
                 configManager.Extend(() =>
                 {
@@ -50,7 +49,7 @@ namespace CatLib.Config
                 });
 
                 return configManager;
-            });
+            }).Alias("config.manager");
         }
 
         /// <summary>
@@ -58,7 +57,7 @@ namespace CatLib.Config
         /// </summary>
         private void RegisterConfig()
         {
-            App.Bind<Config>((app, param) => new Config()).Alias<IConfig>();
+            App.Bind<Config>((app, param) => new Config()).Alias<IConfig>().Alias("config.container");
         }
 
         /// <summary>
@@ -66,8 +65,8 @@ namespace CatLib.Config
         /// </summary>
         private void RegisterLocator()
         {
-            App.Singleton<CodeConfigLocator>();
-            App.Singleton<UnitySettingLocator>();
+            App.Bind<CodeConfigLocator>().Alias("config.locator.code");
+            App.Singleton<UnitySettingLocator>().Alias("config.locator.unity");
         }
     }
 }

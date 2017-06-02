@@ -16,7 +16,7 @@ namespace CatLib.FileSystem
     /// <summary>
     /// 文件
     /// </summary>
-    public class File : Handler, IFile
+    internal sealed class File : Handler, IFile
     {
         /// <summary>
         /// 文件
@@ -41,7 +41,6 @@ namespace CatLib.FileSystem
         /// <summary>
         /// 读取文件
         /// </summary>
-        /// <param name="path">路径</param>
         /// <returns>读取的数据</returns>
         public byte[] Read()
         {

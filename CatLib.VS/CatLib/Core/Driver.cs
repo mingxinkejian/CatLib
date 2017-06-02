@@ -18,12 +18,12 @@ using CatLib.API.Event;
 using CatLib.Stl;
 using UnityEngine;
 
-namespace CatLib
+namespace CatLib.Core
 {
     /// <summary>
     /// Application行为驱动器
     /// </summary>
-    public class Driver : Container.Container, IEventImpl
+    public class Driver : Container, IEventImpl
     {
         /// <summary>
         /// 主线程调度队列锁
@@ -274,12 +274,10 @@ namespace CatLib
         /// </summary>
         public void Update()
         {
-            var cursor = update.GetEnumerator();
-            while (cursor.MoveNext())
+            foreach (var current in update)
             {
-                cursor.Current.Update();
+                current.Update();
             }
-            cursor.Dispose();
             lock (mainThreadDispatcherQueueLocker)
             {
                 while (mainThreadDispatcherQueue.Count > 0)
@@ -294,12 +292,10 @@ namespace CatLib
         /// </summary>
         public void LateUpdate()
         {
-            var cursor = lateUpdate.GetEnumerator();
-            while (cursor.MoveNext())
+            foreach (var current in lateUpdate)
             {
-                cursor.Current.LateUpdate();
+                current.LateUpdate();
             }
-            cursor.Dispose();
         }
 
         /// <summary>
@@ -307,13 +303,10 @@ namespace CatLib
         /// </summary>
         public void OnDestroy()
         {
-            var cursor = destroy.GetEnumerator();
-            while (cursor.MoveNext())
+            foreach (var current in destroy)
             {
-                cursor.Current.OnDestroy();
+                current.OnDestroy();
             }
-            cursor.Dispose();
-
             update.Clear();
             lateUpdate.Clear();
             destroy.Clear();
@@ -380,7 +373,7 @@ namespace CatLib
         /// </summary>
         /// <param name="routine">协程内容</param>
         /// <returns>协程</returns>
-        /// <exception cref="routine">当<paramref name="routine"/>为<c>null</c>时引发</exception>
+        /// <exception cref="ArgumentNullException">当<paramref name="routine"/>为<c>null</c>时引发</exception>
         public Coroutine StartCoroutine(IEnumerator routine)
         {
             Guard.Requires<ArgumentNullException>(routine != null);

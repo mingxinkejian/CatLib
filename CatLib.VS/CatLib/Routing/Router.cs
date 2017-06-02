@@ -12,9 +12,8 @@
 using System;
 using System.Collections.Generic;
 using CatLib.API.Event;
-using CatLib.API.Container;
 using CatLib.API.Routing;
-using CatLib.API.FilterChain;
+using CatLib.API.Stl;
 using CatLib.Stl;
 using System.Collections;
 using CatLib.API;
@@ -24,7 +23,7 @@ namespace CatLib.Routing
     /// <summary>
     /// 路由服务
     /// </summary>
-    public sealed class Router : IRouter
+    internal sealed class Router : IRouter
     {
         /// <summary>
         /// 分隔符
@@ -40,11 +39,6 @@ namespace CatLib.Routing
         /// 容器
         /// </summary>
         private readonly IContainer container;
-
-        /// <summary>
-        /// 过滤器链生成器
-        /// </summary>
-        private readonly IFilterChain filterChain;
 
         /// <summary>
         /// 协议方案
@@ -101,12 +95,10 @@ namespace CatLib.Routing
         /// </summary>
         /// <param name="events">事件</param>
         /// <param name="container">容器</param>
-        /// <param name="filterChain">过滤器链</param>
-        public Router(IEvent events, IContainer container, IFilterChain filterChain)
+        public Router(IEvent events, IContainer container)
         {
             this.events = events;
             this.container = container;
-            this.filterChain = filterChain;
             schemes = new Dictionary<string, Scheme>();
             routeGroupStack = new Stack<IRouteGroup>();
             routeStack = new Stack<Route>();
@@ -175,13 +167,14 @@ namespace CatLib.Routing
         /// 当路由没有找到时
         /// </summary>
         /// <param name="middleware">中间件</param>
+        /// <param name="priority">优先级(值越小越优先)</param>
         /// <returns>当前实例</returns>
-        public IRouter OnNotFound(Action<IRequest, Action<IRequest>> middleware)
+        public IRouter OnNotFound(Action<IRequest, Action<IRequest>> middleware, int priority = int.MaxValue)
         {
             Guard.Requires<ArgumentNullException>(middleware != null);
             if (onNotFound == null)
             {
-                onNotFound = filterChain.Create<IRequest>();
+                onNotFound = new FilterChain<IRequest>();
             }
             onNotFound.Add(middleware);
             return this;
@@ -191,13 +184,14 @@ namespace CatLib.Routing
         /// 全局路由中间件
         /// </summary>
         /// <param name="middleware">中间件</param>
+        /// <param name="priority">优先级(值越小越优先)</param>
         /// <returns>当前路由器实例</returns>
-        public IRouter Middleware(Action<IRequest, IResponse, Action<IRequest, IResponse>> middleware)
+        public IRouter Middleware(Action<IRequest, IResponse, Action<IRequest, IResponse>> middleware, int priority = int.MaxValue)
         {
             Guard.Requires<ArgumentNullException>(middleware != null);
             if (this.middleware == null)
             {
-                this.middleware = filterChain.Create<IRequest, IResponse>();
+                this.middleware = new FilterChain<IRequest, IResponse>();
             }
             this.middleware.Add(middleware);
             return this;
@@ -207,13 +201,14 @@ namespace CatLib.Routing
         /// 当路由出现错误时
         /// </summary>
         /// <param name="onError">错误处理函数</param>
+        /// <param name="priority">优先级(值越小越优先)</param>
         /// <returns>当前实例</returns>
-        public IRouter OnError(Action<IRequest, IResponse, Exception, Action<IRequest, IResponse, Exception>> onError)
+        public IRouter OnError(Action<IRequest, IResponse, Exception, Action<IRequest, IResponse, Exception>> onError, int priority = int.MaxValue)
         {
             Guard.Requires<ArgumentNullException>(onError != null);
             if (this.onError == null)
             {
-                this.onError = filterChain.Create<IRequest, IResponse, Exception>();
+                this.onError = new FilterChain<IRequest, IResponse, Exception>();
             }
             this.onError.Add(onError);
             return this;
@@ -231,7 +226,7 @@ namespace CatLib.Routing
             uri = GuardUri(uri);
             uri = Prefix(uri);
 
-            var request = CreateRequest(uri, context);
+            var request = MakeRequest(uri, context);
 
             if (!schemes.ContainsKey(request.RouteUri.Scheme))
             {
@@ -284,11 +279,11 @@ namespace CatLib.Routing
             }
             if (name == null)
             {
-                return (new RouteGroup()).SetFilterChain(filterChain);
+                return new RouteGroup();
             }
             if (!routeGroup.ContainsKey(name))
             {
-                routeGroup.Add(name, new RouteGroup().SetFilterChain(filterChain));
+                routeGroup.Add(name, new RouteGroup());
             }
 
             return routeGroup[name];
@@ -318,7 +313,7 @@ namespace CatLib.Routing
         /// <returns>迭代器</returns>
         public IEnumerator RouterCompiler()
         {
-            events.Event.Trigger(RouterEvents.OnRouterAttrCompiler, this);
+            events.Event.Trigger(RouterEvents.OnBeforeRouterAttrCompiler, this);
             var compiler = container.Make<AttrRouteCompiler>();
             if (compiler != null)
             {
@@ -340,7 +335,7 @@ namespace CatLib.Routing
 
             if (!schemes.ContainsKey(uri.Scheme))
             {
-                CreateScheme(uri.Scheme);
+                MakeScheme(uri.Scheme);
             }
 
             var route = MakeRoute(uri, action);
@@ -365,7 +360,6 @@ namespace CatLib.Routing
         {
             var route = new Route(uri, action);
             route.SetRouter(this);
-            route.SetFilterChain(filterChain);
             route.SetContainer(container);
             return route;
         }
@@ -486,9 +480,9 @@ namespace CatLib.Routing
         /// </summary>
         /// <param name="name">scheme名字</param>
         /// <returns>当前路由实例</returns>
-        private IRouter CreateScheme(string name)
+        private IRouter MakeScheme(string name)
         {
-            schemes.Add(name.ToLower(), (new Scheme(name)).SetRouter(this));
+            schemes.Add(name.ToLower(), new Scheme(name));
             return this;
         }
 
@@ -509,7 +503,7 @@ namespace CatLib.Routing
         /// <param name="uri">uri</param>
         /// <param name="context">上下文</param>
         /// <returns>请求</returns>
-        private Request CreateRequest(string uri, object context)
+        private Request MakeRequest(string uri, object context)
         {
             return new Request(uri, context);
         }

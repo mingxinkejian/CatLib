@@ -12,8 +12,7 @@
 using System;
 using CatLib.API;
 using CatLib.API.Routing;
-using CatLib.API.FilterChain;
-using CatLib.API.Container;
+using CatLib.API.Stl;
 using CatLib.Stl;
 
 namespace CatLib.Routing
@@ -36,17 +35,15 @@ namespace CatLib.Routing
         /// <summary>
         /// 统一资源标识
         /// </summary>
-        internal Uri Uri { get { return uri; } }
+        internal Uri Uri
+        {
+            get { return uri; }
+        }
 
         /// <summary>
         /// 路由器
         /// </summary>
         private Router router;
-
-        /// <summary>
-        /// 方案
-        /// </summary>
-        private Scheme scheme;
 
         /// <summary>
         /// 路由配置
@@ -93,7 +90,7 @@ namespace CatLib.Routing
         /// </summary>
         /// <param name="uri">uri信息</param>
         /// <param name="action">路由行为</param>
-        internal Route(Uri uri, RouteAction action)
+        public Route(Uri uri, RouteAction action)
         {
             this.uri = uri;
             this.action = action;
@@ -113,17 +110,6 @@ namespace CatLib.Routing
         }
 
         /// <summary>
-        /// 设定方案
-        /// </summary>
-        /// <param name="scheme">所属方案</param>
-        /// <returns>当前路由条目</returns>
-        internal Route SetScheme(Scheme scheme)
-        {
-            this.scheme = scheme;
-            return this;
-        }
-
-        /// <summary>
         /// 设定路由器
         /// </summary>
         /// <param name="router">路由器</param>
@@ -131,17 +117,6 @@ namespace CatLib.Routing
         public Route SetRouter(Router router)
         {
             this.router = router;
-            return this;
-        }
-
-        /// <summary>
-        /// 设定过滤器链生成器
-        /// </summary>
-        /// <param name="filterChain">过滤器链</param>
-        /// <returns>当前路由条目</returns>
-        public Route SetFilterChain(IFilterChain filterChain)
-        {
-            options.SetFilterChain(filterChain);
             return this;
         }
 
@@ -226,11 +201,12 @@ namespace CatLib.Routing
         /// 当路由出现错误时
         /// </summary>
         /// <param name="onError">执行的处理函数</param>
+        /// <param name="priority">优先级(值越小越优先)</param>
         /// <returns>路由条目实例</returns>
-        public IRoute OnError(Action<IRequest, IResponse, Exception, Action<IRequest, IResponse, Exception>> onError)
+        public IRoute OnError(Action<IRequest, IResponse, Exception, Action<IRequest, IResponse, Exception>> onError, int priority = int.MaxValue)
         {
             Guard.Requires<ArgumentNullException>(onError != null);
-            options.OnError(onError);
+            options.OnError(onError, priority);
             return this;
         }
 
@@ -238,11 +214,12 @@ namespace CatLib.Routing
         /// 路由中间件
         /// </summary>
         /// <param name="middleware">执行的处理函数</param>
+        /// <param name="priority">优先级(值越小越优先)</param>
         /// <returns>路由条目实例</returns>
-        public IRoute Middleware(Action<IRequest, IResponse, Action<IRequest, IResponse>> middleware)
+        public IRoute Middleware(Action<IRequest, IResponse, Action<IRequest, IResponse>> middleware, int priority = int.MaxValue)
         {
             Guard.Requires<ArgumentNullException>(middleware != null);
-            options.Middleware(middleware);
+            options.Middleware(middleware, priority);
             return this;
         }
 
@@ -320,7 +297,7 @@ namespace CatLib.Routing
             else
             {
                 throw new RuntimeException("Undefine action type [" + action.Type + "].");
-            } 
+            }
         }
 
         /// <summary>

@@ -9,8 +9,6 @@
  * Document: http://catlib.io/
  */
 
-using System.Text.RegularExpressions;
-
 namespace CatLib.Routing
 {
     /// <summary>
@@ -26,7 +24,7 @@ namespace CatLib.Routing
         /// <returns>是否匹配</returns>
         public bool Matches(Route route, Request request)
         {
-            return (new Regex(route.Compiled.RouteRegex)).IsMatch(request.RouteUri.NoParamFullPath);
+            return route.Compiled.RouteRegex.IsMatch(request.RouteUri.NoParamFullPath);
         }
     }
 }

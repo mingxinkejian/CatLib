@@ -10,6 +10,7 @@
  */
 
 using System;
+using CatLib.Core;
 #if UNITY_EDITOR || NUNIT
 using NUnit.Framework;
 using TestClass = NUnit.Framework.TestFixtureAttribute;
@@ -62,10 +63,7 @@ namespace CatLib.Tests.Core
         {
             App.Instance = null;
 
-#if UNITY_EDITOR
-            var f = TestClassFacaed.Instance;
-            Assert.AreNotEqual(null, f);
-#else
+#if !UNITY_EDITOR
             ExceptionAssert.Throws<NullReferenceException>(() =>
             {
                 var f = TestClassFacaed.Instance;

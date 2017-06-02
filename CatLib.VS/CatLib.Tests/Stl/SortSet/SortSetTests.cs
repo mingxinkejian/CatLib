@@ -337,8 +337,9 @@ namespace CatLib.Tests.Stl
             {
                 var rank = rand.Next(0, num);
                 var val = list.GetElementByRank(rank);
+                var val2 = list[rank];
 
-                if (rank != val)
+                if (rank != val || rank != val2)
                 {
                     Assert.Fail();
                 }
@@ -488,7 +489,10 @@ namespace CatLib.Tests.Stl
             var master = new SortSet<int, int>();
             master.Add(10, 10);
 
-            Assert.AreEqual(0, master.GetElementByRank(1000));
+            ExceptionAssert.Throws<ArgumentOutOfRangeException>(() =>
+            {
+                master.GetElementByRank(1000);
+            });
         }
 
         /// <summary>
@@ -498,7 +502,10 @@ namespace CatLib.Tests.Stl
         public void GetElementByRankEmptyTest()
         {
             var master = new SortSet<int, int>();
-            Assert.AreEqual(0, master.GetElementByRank(100));
+            ExceptionAssert.Throws<InvalidOperationException>(() =>
+            {
+                master.GetElementByRank(100);
+            });
         }
 
         /// <summary>
@@ -643,7 +650,7 @@ namespace CatLib.Tests.Stl
         public void BoundFirstTest()
         {
             var master = new SortSet<int, int>(0.25, 32);
-            ExceptionAssert.DoesNotThrow(() =>
+            ExceptionAssert.Throws<InvalidOperationException>(() =>
             {
                 master.First();
             }); 
@@ -656,7 +663,124 @@ namespace CatLib.Tests.Stl
         public void BoundLastTest()
         {
             var master = new SortSet<int, int>(0.25, 32);
-            ExceptionAssert.DoesNotThrow(() =>
+            ExceptionAssert.Throws<InvalidOperationException>(() =>
+            {
+                master.Last();
+            });
+        }
+
+        /// <summary>
+        /// 转为数组测试
+        /// </summary>
+        [TestMethod]
+        public void ToArray()
+        {
+            var master = new SortSet<int, int>(0.25, 32);
+            master.Add(10 , 10);
+            master.Add(90, 90);
+            master.Add(20, 20);
+            master.Add(80, 80);
+            master.Add(0, 0);
+            master.Add(40, 40);
+            master.Add(50, 50);
+            master.Add(60, 60);
+            master.Add(30, 30);
+            master.Add(70, 70);
+
+            var i = 0;
+            foreach (var e in master.ToArray())
+            {
+                Assert.AreEqual(i++ * 10, e);
+            }
+        }
+
+        /// <summary>
+        /// 相同的分数测试
+        /// </summary>
+        [TestMethod]
+        public void SameScoreTest()
+        {
+            //根据有序集规则，后插入的相同分数将会被优先遍历到
+            var master = new SortSet<int, int>(0.25, 32);
+            master.Add(10, 10);
+            master.Add(90, 10);
+            master.Add(20, 10);
+            master.Add(80, 10);
+
+            var a = master.ToArray();
+
+            Assert.AreEqual(80 , a[0]);
+            Assert.AreEqual(20, a[1]);
+            Assert.AreEqual(90, a[2]);
+            Assert.AreEqual(10, a[3]);
+        }
+
+        [TestMethod]
+        public void RemoveNotExistsElementTest()
+        {
+            var master = new SortSet<int, int>(0.25, 32);
+            master.Add(10, 10);
+            master.Add(90, 10);
+            master.Add(20, 10);
+            master.Add(80, 10);
+
+            if (master.Remove(8888))
+            {
+                Assert.Fail();
+            }
+        }
+
+        /// <summary>
+        /// 弹出空的有序集
+        /// </summary>
+        [TestMethod]
+        public void PopEmptySortSet()
+        {
+            var master = new SortSet<int, int>(0.25, 32);
+
+            ExceptionAssert.Throws<InvalidOperationException>(() =>
+            {
+                master.Pop();
+            });
+        }
+
+        /// <summary>
+        /// 弹出空的有序集
+        /// </summary>
+        [TestMethod]
+        public void ShiftEmptySortSet()
+        {
+            var master = new SortSet<int, int>(0.25, 32);
+
+            ExceptionAssert.Throws<InvalidOperationException>(() =>
+            {
+                master.Shift();
+            });
+        }
+
+        /// <summary>
+        /// 有序集的第一个元素
+        /// </summary>
+        [TestMethod]
+        public void FirstEmptySortSet()
+        {
+            var master = new SortSet<int, int>(0.25, 32);
+
+            ExceptionAssert.Throws<InvalidOperationException>(() =>
+            {
+                master.First();
+            });
+        }
+
+        /// <summary>
+        /// 有序集的最后一个元素
+        /// </summary>
+        [TestMethod]
+        public void LastEmptySortSet()
+        {
+            var master = new SortSet<int, int>(0.25, 32);
+
+            ExceptionAssert.Throws<InvalidOperationException>(() =>
             {
                 master.Last();
             });

@@ -21,7 +21,7 @@ namespace CatLib.FileSystem
     /// <summary>
     /// 本地驱动器
     /// </summary>
-    public class Local : IFileSystemAdapter
+    internal class Local : IFileSystemAdapter
     {
         /// <summary>
         /// 根目录
@@ -199,7 +199,7 @@ namespace CatLib.FileSystem
         /// 创建文件夹
         /// </summary>
         /// <param name="path">文件夹路径</param>
-        public void CreateDir(string path)
+        public void MakeDir(string path)
         {
             Guard.NotEmptyOrNull(path, "path");
 
