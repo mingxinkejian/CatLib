@@ -8,7 +8,7 @@
  *
  * Document: http://catlib.io/
  */
-
+ 
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -18,7 +18,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("CatLib")]
 [assembly: AssemblyProduct("CatLib")]
-[assembly: AssemblyCopyright("Copyright ©  2017")]
+[assembly: AssemblyCopyright("Copyright © CatLib 2017")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -32,4 +32,5 @@ using System.Runtime.InteropServices;
 
 [assembly: InternalsVisibleTo("Assembly-CSharp-Editor"),
             InternalsVisibleTo("Assembly-CSharp-Editor-firstpass"),
-            InternalsVisibleTo("CatLib.Tests")]
+            InternalsVisibleTo("CatLib.Tests"),
+           InternalsVisibleTo("CatLib.Unity.Tests")]

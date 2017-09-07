@@ -10,16 +10,14 @@
  */
 
 using System;
-using CatLib.Config;
+using CatLib.Config.Locator;
 #if UNITY_EDITOR || NUNIT
 using NUnit.Framework;
 using TestClass = NUnit.Framework.TestFixtureAttribute;
 using TestMethod = NUnit.Framework.TestAttribute;
 #else
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Category = Microsoft.VisualStudio.TestTools.UnitTesting.DescriptionAttribute;
 #endif
-
 
 namespace CatLib.Tests.Config
 {

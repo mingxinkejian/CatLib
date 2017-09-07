@@ -9,8 +9,8 @@
  * Document: http://catlib.io/
  */
 
-using System;
 using CatLib.API.Routing;
+using System;
 
 namespace CatLib.Routing
 {
@@ -48,7 +48,7 @@ namespace CatLib.Routing
         /// <summary>
         /// 控制器
         /// </summary>
-        public string Controller { get; set; }
+        public Type Controller { get; set; }
 
         /// <summary>
         /// 调度函数名

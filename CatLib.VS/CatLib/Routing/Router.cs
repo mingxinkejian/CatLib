@@ -9,31 +9,27 @@
  * Document: http://catlib.io/
  */
 
+using CatLib.API.Events;
+using CatLib.API.Routing;
 using System;
 using System.Collections.Generic;
-using CatLib.API.Event;
-using CatLib.API.Routing;
-using CatLib.API.Stl;
-using CatLib.Stl;
-using System.Collections;
-using CatLib.API;
 
 namespace CatLib.Routing
 {
     /// <summary>
     /// 路由服务
     /// </summary>
-    internal sealed class Router : IRouter
+    public sealed class Router : IRouter
     {
         /// <summary>
         /// 分隔符
         /// </summary>
-        private const char SEPARATOR = '/';
+        private const char Separator = '/';
 
         /// <summary>
         /// 全局调度器
         /// </summary>
-        private IEvent events;
+        private readonly IDispatcher dispatcher;
 
         /// <summary>
         /// 容器
@@ -91,13 +87,18 @@ namespace CatLib.Routing
         private string defaultScheme;
 
         /// <summary>
+        /// 同步锁
+        /// </summary>
+        private readonly object syncRoot = new object();
+
+        /// <summary>
         /// 创建一个新的路由器
         /// </summary>
-        /// <param name="events">事件</param>
+        /// <param name="dispatcher">事件调度器</param>
         /// <param name="container">容器</param>
-        public Router(IEvent events, IContainer container)
+        public Router(IDispatcher dispatcher, IContainer container)
         {
-            this.events = events;
+            this.dispatcher = dispatcher;
             this.container = container;
             schemes = new Dictionary<string, Scheme>();
             routeGroupStack = new Stack<IRouteGroup>();
@@ -113,7 +114,10 @@ namespace CatLib.Routing
         /// <returns>当前实例</returns>
         public IRouter SetDefaultScheme(string scheme)
         {
-            defaultScheme = scheme;
+            lock (syncRoot)
+            {
+                defaultScheme = scheme;
+            }
             return this;
         }
 
@@ -136,11 +140,14 @@ namespace CatLib.Routing
         {
             Guard.NotEmptyOrNull(uris, "uris");
             Guard.Requires<ArgumentNullException>(action != null);
-            return RegisterRoute(uris, new RouteAction()
+            lock (syncRoot)
             {
-                Type = RouteAction.RouteTypes.CallBack,
-                Action = action,
-            });
+                return RegisterRoute(uris, new RouteAction
+                {
+                    Type = RouteAction.RouteTypes.CallBack,
+                    Action = action,
+                });
+            }
         }
 
         /// <summary>
@@ -155,12 +162,15 @@ namespace CatLib.Routing
             Guard.NotEmptyOrNull(uris, "uris");
             Guard.Requires<ArgumentNullException>(controller != null);
             Guard.NotEmptyOrNull(func, "func");
-            return RegisterRoute(uris, new RouteAction()
+            lock (syncRoot)
             {
-                Type = RouteAction.RouteTypes.ControllerCall,
-                Controller = controller.ToString(),
-                Func = func
-            });
+                return RegisterRoute(uris, new RouteAction
+                {
+                    Type = RouteAction.RouteTypes.ControllerCall,
+                    Controller = controller,
+                    Func = func
+                });
+            }
         }
 
         /// <summary>
@@ -172,12 +182,15 @@ namespace CatLib.Routing
         public IRouter OnNotFound(Action<IRequest, Action<IRequest>> middleware, int priority = int.MaxValue)
         {
             Guard.Requires<ArgumentNullException>(middleware != null);
-            if (onNotFound == null)
+            lock (syncRoot)
             {
-                onNotFound = new FilterChain<IRequest>();
+                if (onNotFound == null)
+                {
+                    onNotFound = new FilterChain<IRequest>();
+                }
+                onNotFound.Add(middleware);
+                return this;
             }
-            onNotFound.Add(middleware);
-            return this;
         }
 
         /// <summary>
@@ -189,12 +202,15 @@ namespace CatLib.Routing
         public IRouter Middleware(Action<IRequest, IResponse, Action<IRequest, IResponse>> middleware, int priority = int.MaxValue)
         {
             Guard.Requires<ArgumentNullException>(middleware != null);
-            if (this.middleware == null)
+            lock (syncRoot)
             {
-                this.middleware = new FilterChain<IRequest, IResponse>();
+                if (this.middleware == null)
+                {
+                    this.middleware = new FilterChain<IRequest, IResponse>();
+                }
+                this.middleware.Add(middleware);
+                return this;
             }
-            this.middleware.Add(middleware);
-            return this;
         }
 
         /// <summary>
@@ -206,12 +222,15 @@ namespace CatLib.Routing
         public IRouter OnError(Action<IRequest, IResponse, Exception, Action<IRequest, IResponse, Exception>> onError, int priority = int.MaxValue)
         {
             Guard.Requires<ArgumentNullException>(onError != null);
-            if (this.onError == null)
+            lock (syncRoot)
             {
-                this.onError = new FilterChain<IRequest, IResponse, Exception>();
+                if (this.onError == null)
+                {
+                    this.onError = new FilterChain<IRequest, IResponse, Exception>();
+                }
+                this.onError.Add(onError);
+                return this;
             }
-            this.onError.Add(onError);
-            return this;
         }
 
         /// <summary>
@@ -222,47 +241,52 @@ namespace CatLib.Routing
         /// <returns>请求响应</returns>
         public IResponse Dispatch(string uri, object context = null)
         {
-            Guard.NotEmptyOrNull(uri, "uri");
-            uri = GuardUri(uri);
-            uri = Prefix(uri);
-
-            var request = MakeRequest(uri, context);
-
-            if (!schemes.ContainsKey(request.RouteUri.Scheme))
+            lock (syncRoot)
             {
-                ThrowOnNotFound(request);
-                return null;
-            }
-            try
-            {
-                var route = FindRoute(request);
-                if (routeStack.Contains(route))
-                {
-                    throw new RuntimeException("A circular dependency call was detected , uri [" + uri + "].");
-                }
+                Route route = null;
+                Request request = null;
+                var response = new Response();
                 try
                 {
-                    routeStack.Push(route);
-                    container.Instance(typeof(IRequest).ToString(), request);
-                    requestStack.Push(request);
+                    request = MakeRequest(uri, context);
 
-                    request.SetRoute(route);
+                    try
+                    {
+                        route = FindRoute(request);
+                    }
+                    catch (NotFoundRouteException)
+                    {
+                        if (ThrowOnNotFound(request))
+                        {
+                            return null;
+                        }
+                        throw;
+                    }
 
-                    events.Event.Trigger(RouterEvents.OnDispatcher, this, new DispatchEventArgs(route, request));
+                    GuardCircularDependency(route, request);
 
-                    return RunRouteWithMiddleware(route, request);
+                    try
+                    {
+                        EnvironmentPreparation(route, request, response, false);
+                        return RunRouteWithMiddleware(route, request, response);
+                    }
+                    finally
+                    {
+                        EnvironmentPreparation(route, request, response, true);
+                    }
                 }
-                finally
+                catch (NotFoundRouteException)
                 {
-                    routeStack.Pop();
-                    requestStack.Pop();
-                    container.Instance(typeof(IRequest).ToString(), requestStack.Count > 0 ? requestStack.Peek() : null);
+                    throw;
                 }
-            }
-            catch (NotFoundRouteException)
-            {
-                ThrowOnNotFound(request);
-                return null;
+                catch (Exception ex)
+                {
+                    if (ThrowException(route, request ?? (IRequest)new ExceptionRequest(uri, context), response, ex))
+                    {
+                        return null;
+                    }
+                    throw;
+                }
             }
         }
 
@@ -273,20 +297,23 @@ namespace CatLib.Routing
         /// <returns>当前实例</returns>
         public IRouteGroup Group(string name)
         {
-            if (routeGroup == null)
+            lock (syncRoot)
             {
-                routeGroup = new Dictionary<string, RouteGroup>();
-            }
-            if (name == null)
-            {
-                return new RouteGroup();
-            }
-            if (!routeGroup.ContainsKey(name))
-            {
-                routeGroup.Add(name, new RouteGroup());
-            }
+                if (routeGroup == null)
+                {
+                    routeGroup = new Dictionary<string, RouteGroup>();
+                }
+                if (name == null)
+                {
+                    return new RouteGroup();
+                }
+                if (!routeGroup.ContainsKey(name))
+                {
+                    routeGroup.Add(name, new RouteGroup());
+                }
 
-            return routeGroup[name];
+                return routeGroup[name];
+            }
         }
 
         /// <summary>
@@ -298,28 +325,107 @@ namespace CatLib.Routing
         public IRouteGroup Group(Action area, string name = null)
         {
             Guard.Requires<ArgumentNullException>(area != null);
-            var group = Group(name);
+            lock (syncRoot)
+            {
+                var group = Group(name);
 
-            routeGroupStack.Push(group);
-            area.Invoke();
-            routeGroupStack.Pop();
+                routeGroupStack.Push(group);
+                area.Invoke();
+                routeGroupStack.Pop();
 
-            return group;
+                return group;
+            }
         }
 
         /// <summary>
         /// 路由器编译
         /// </summary>
         /// <returns>迭代器</returns>
-        public IEnumerator RouterCompiler()
+        public void RouterCompiler()
         {
-            events.Event.Trigger(RouterEvents.OnBeforeRouterAttrCompiler, this);
-            var compiler = container.Make<AttrRouteCompiler>();
-            if (compiler != null)
+            lock (syncRoot)
             {
-                compiler.Complie();
+                var compiler = container.Make<AttrRouteCompiler>();
+                if (compiler != null)
+                {
+                    if (dispatcher != null)
+                    {
+                        dispatcher.Trigger(RouterEvents.OnBeforeRouterAttrCompiler, this);
+                    }
+                    compiler.Complie();
+                }
             }
-            yield break;
+        }
+
+        /// <summary>
+        /// 保证不处于循环依赖调用
+        /// </summary>
+        /// <param name="route">路由条目</param>
+        /// <param name="request">请求</param>
+        private void GuardCircularDependency(Route route, Request request)
+        {
+            foreach (var r in routeStack)
+            {
+                if (r.Equals(route))
+                {
+                    throw new RuntimeException("A circular dependency call was detected , uri [" + request.Uri + "].");
+                }
+            }
+        }
+
+        /// <summary>
+        /// 环境预备
+        /// </summary>
+        /// <param name="route">路由</param>
+        /// <param name="request">请求</param>
+        /// <param name="response">响应</param>
+        /// <param name="isRollback">是否回滚</param>
+        private void EnvironmentPreparation(Route route, Request request, Response response, bool isRollback)
+        {
+            if (!isRollback)
+            {
+                routeStack.Push(route);
+                responseStack.Push(response);
+                requestStack.Push(request);
+                request.SetRoute(route);
+
+                container.Instance(container.Type2Service(typeof(IRequest)), request);
+                container.Instance(container.Type2Service(typeof(IResponse)), response);
+            }
+            else
+            {
+                routeStack.Pop();
+                requestStack.Pop();
+                responseStack.Pop();
+                container.Instance(container.Type2Service(typeof(IResponse)),
+                    responseStack.Count > 0 ? responseStack.Peek() : null);
+                container.Instance(container.Type2Service(typeof(IRequest)),
+                    requestStack.Count > 0 ? requestStack.Peek() : null);
+            }
+        }
+
+        /// <summary>
+        /// 触发异常冒泡
+        /// </summary>
+        /// <param name="route">路由条目</param>
+        /// <param name="request">当前请求</param>
+        /// <param name="response">当前响应</param>
+        /// <param name="ex">异常</param>
+        /// <returns>冒泡是否已经被拦截</returns>
+        private bool ThrowException(Route route, IRequest request, IResponse response, Exception ex)
+        {
+            var chain = route != null ? route.GatherOnError() : null;
+            var throwBubble = (chain == null);
+            if (!throwBubble)
+            {
+                // 触发局部异常冒泡(如果局部被捕获则不会向全局冒泡)
+                chain.Do(request, response, ex, (req, res, error) =>
+                {
+                    throwBubble = true;
+                });
+            }
+
+            return !throwBubble || ThrowOnError(request, response, ex);
         }
 
         /// <summary>
@@ -368,12 +474,18 @@ namespace CatLib.Routing
         /// 触发没有找到路由的过滤器链
         /// </summary>
         /// <param name="request">请求</param>
-        private void ThrowOnNotFound(IRequest request)
+        /// <returns>冒泡是否已经被拦截</returns>
+        private bool ThrowOnNotFound(IRequest request)
         {
-            if (onNotFound != null)
+            var isIntercept = (onNotFound != null);
+            if (isIntercept)
             {
-                onNotFound.Do(request);
+                onNotFound.Do(request, (req) =>
+               {
+                   isIntercept = false;
+               });
             }
+            return isIntercept;
         }
 
         /// <summary>
@@ -382,12 +494,19 @@ namespace CatLib.Routing
         /// <param name="request">请求</param>
         /// <param name="response">响应</param>
         /// <param name="ex">异常</param>
-        private void ThrowOnError(IRequest request, IResponse response, Exception ex)
+        /// <returns>冒泡是否已经被拦截</returns>
+        private bool ThrowOnError(IRequest request, IResponse response, Exception ex)
         {
-            if (onError != null)
+            var isIntercept = (onError != null);
+            if (isIntercept)
             {
-                onError.Do(request, response, ex);
+                onError.Do(request, response, ex, (req, res, exception) =>
+                {
+                    isIntercept = false;
+                });
             }
+
+            return isIntercept;
         }
 
         /// <summary>
@@ -395,84 +514,27 @@ namespace CatLib.Routing
         /// </summary>
         /// <param name="route">路由条目</param>
         /// <param name="request">请求</param>
-        /// <returns>响应</returns>
-        private IResponse RunRouteWithMiddleware(Route route, Request request)
-        {
-            var response = new Response();
-
-            try
-            {
-                container.Instance(typeof(IResponse).ToString(), response);
-                responseStack.Push(response);
-
-                if (middleware != null)
-                {
-                    middleware.Do(request, response, (req, res) =>
-                  {
-                      RunInRoute(route, request, response);
-                  });
-                }
-                else
-                {
-                    RunInRoute(route, request, response);
-                }
-                return response;
-            }
-            catch (Exception ex)
-            {
-                var chain = route.GatherOnError();
-                if (chain != null)
-                {
-                    chain.Do(request, response, ex, (req, res, error) =>
-                     {
-                         ThrowOnError(request, response, ex);
-                     });
-                }
-                else
-                {
-                    ThrowOnError(request, response, ex);
-                }
-                return null;
-            }
-            finally
-            {
-                responseStack.Pop();
-                container.Instance(typeof(IResponse).ToString(), responseStack.Count > 0 ? responseStack.Peek() : null);
-            }
-        }
-
-        /// <summary>
-        /// 执行路由请求
-        /// </summary>
-        /// <param name="route">路由</param>
-        /// <param name="request">请求</param>
         /// <param name="response">响应</param>
         /// <returns>响应</returns>
-        private IResponse RunInRoute(Route route, Request request, Response response)
+        private IResponse RunRouteWithMiddleware(Route route, Request request, Response response)
         {
-            var middleware = route.GatherMiddleware();
+            if (dispatcher != null)
+            {
+                dispatcher.Trigger(RouterEvents.OnDispatcher, new DispatchEventArgs(this, route, request));
+            }
+
             if (middleware != null)
             {
                 middleware.Do(request, response, (req, res) =>
                 {
-                    PrepareResponse(req, route.Run(req as Request, res as Response));
+                    route.Run(request, response);
                 });
             }
             else
             {
-                PrepareResponse(request, route.Run(request, response));
+                route.Run(request, response);
             }
             return response;
-        }
-
-        /// <summary>
-        /// 准备响应的内容
-        /// </summary>
-        /// <param name="request">请求</param>
-        /// <param name="response">响应</param>
-        private void PrepareResponse(IRequest request, IResponse response)
-        {
-            //todo: 预留函数  
         }
 
         /// <summary>
@@ -493,6 +555,10 @@ namespace CatLib.Routing
         /// <returns>命中的路由</returns>
         private Route FindRoute(Request request)
         {
+            if (!schemes.ContainsKey(request.RouteUri.Scheme))
+            {
+                throw new NotFoundRouteException("Can not find scheme [" + request.RouteUri.Scheme + "].");
+            }
             var route = schemes[request.RouteUri.Scheme].Match(request);
             return route;
         }
@@ -505,6 +571,8 @@ namespace CatLib.Routing
         /// <returns>请求</returns>
         private Request MakeRequest(string uri, object context)
         {
+            uri = GuardUri(uri);
+            uri = Prefix(uri);
             return new Request(uri, context);
         }
 
@@ -515,7 +583,7 @@ namespace CatLib.Routing
         /// <returns>处理后的url</returns>
         private string Prefix(string url)
         {
-            return (GetLastGroupPrefix().Trim(SEPARATOR) + SEPARATOR + url.Trim(SEPARATOR)).Trim(SEPARATOR);
+            return (GetLastGroupPrefix().Trim(Separator) + Separator + url.Trim(Separator)).Trim(Separator);
         }
 
         /// <summary>
@@ -534,10 +602,7 @@ namespace CatLib.Routing
         /// <returns>处理后的uri</returns>
         private string GuardUri(string uri)
         {
-            if (string.IsNullOrEmpty(uri))
-            {
-                throw new RouterConfigException("Uri is Null or Empty.");
-            }
+            Guard.NotEmptyOrNull(uri, "uri");
 
             if (uri.IndexOf(@"://") >= 0)
             {

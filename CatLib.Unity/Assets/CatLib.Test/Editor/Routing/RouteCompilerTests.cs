@@ -9,6 +9,7 @@
  * Document: http://catlib.io/
  */
 
+using CatLib.API.Routing;
 using CatLib.Routing;
 #if UNITY_EDITOR || NUNIT
 using NUnit.Framework;
@@ -18,7 +19,6 @@ using TestInitialize = NUnit.Framework.SetUpAttribute;
 using TestCleanup = NUnit.Framework.TearDownAttribute;
 #else
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Category = Microsoft.VisualStudio.TestTools.UnitTesting.DescriptionAttribute;
 #endif
 
 namespace CatLib.Tests.Routing

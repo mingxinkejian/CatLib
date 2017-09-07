@@ -9,10 +9,10 @@
  * Document: http://catlib.io/
  */
 
-using System.Text.RegularExpressions;
+using CatLib.API.Routing;
 using System.Collections;
 using System.Collections.Generic;
-using CatLib.API;
+using System.Text.RegularExpressions;
 
 namespace CatLib.Routing
 {
@@ -24,12 +24,12 @@ namespace CatLib.Routing
         /// <summary>
         /// 分隔符
         /// </summary>
-        private const string SEPARATORS = @"/,;.:-_~+*=@|";
+        private const string Separators = @"/,;.:-_~+*=@|";
 
         /// <summary>
         /// 变量最大长度
         /// </summary>
-        private const int VARIABLE_MAXIMUM_LENGTH = 32;
+        private const int VariableMaximumLength = 32;
 
         /// <summary>
         /// 编译路由条目
@@ -130,7 +130,7 @@ namespace CatLib.Routing
 
                 precedingChar = precedingText.Length <= 0 ? string.Empty : precedingText.Substring(precedingText.Length - 1);
 
-                isSeparator = string.Empty != precedingChar && SEPARATORS.Contains(precedingChar);
+                isSeparator = string.Empty != precedingChar && Separators.Contains(precedingChar);
 
                 if (IsMatch(@"^\d", varName))
                 {
@@ -142,9 +142,9 @@ namespace CatLib.Routing
                     throw new DomainException(string.Format("Route pattern [{0}] cannot reference variable name [{1}] more than once.", varName, uri));
                 }
 
-                if (varName.Length > VARIABLE_MAXIMUM_LENGTH)
+                if (varName.Length > VariableMaximumLength)
                 {
-                    throw new DomainException(string.Format("Variable name [{0}] cannot be longer than [{1}] characters in route pattern [{2}]. please use a shorter name.", varName, VARIABLE_MAXIMUM_LENGTH, uri));
+                    throw new DomainException(string.Format("Variable name [{0}] cannot be longer than [{1}] characters in route pattern [{2}]. please use a shorter name.", varName, VariableMaximumLength, uri));
                 }
 
                 if (isSeparator && precedingText != precedingChar)
@@ -169,8 +169,8 @@ namespace CatLib.Routing
 
                     where = string.Format(
                         "[^{0}{1}]+",
-                        RegexQuote(defaultSeparator),
-                        defaultSeparator != nextSeparator && nextSeparator != string.Empty ? RegexQuote(nextSeparator) : string.Empty
+                        Str.RegexQuote(defaultSeparator),
+                        defaultSeparator != nextSeparator && nextSeparator != string.Empty ? Str.RegexQuote(nextSeparator) : string.Empty
                     );
                 }
 
@@ -237,17 +237,15 @@ namespace CatLib.Routing
             if (token[0] == "text")
             {
                 //传统文本匹配格式
-                return RegexQuote(token[1]);
+                return Str.RegexQuote(token[1]);
             }
 
-            //变量匹配格式
             if (index == 0 && firstOptional == 0)
             {
-                // 如果唯一一个变量token那么必须加入分隔符
-                return string.Format("{0}(?<{1}>{2})?", RegexQuote(token[1]), token[3], token[2]);
+                return string.Format("{0}(?<{1}>{2})?", Str.RegexQuote(token[1]), token[3], token[2]);
             }
 
-            var regexp = string.Format("{0}(?<{1}>{2})", RegexQuote(token[1]), token[3], token[2]);
+            var regexp = string.Format("{0}(?<{1}>{2})", Str.RegexQuote(token[1]), token[3], token[2]);
             if (index < firstOptional)
             {
                 return regexp;
@@ -257,41 +255,10 @@ namespace CatLib.Routing
             var nbTokens = tokens.Count;
             if (nbTokens - 1 == index)
             {
-                regexp += StrRepeat(")?", nbTokens - firstOptional - (0 == firstOptional ? 1 : 0));
+                regexp += Str.Repeat(")?", nbTokens - firstOptional - (0 == firstOptional ? 1 : 0));
             }
 
             return regexp;
-        }
-
-        /// <summary>
-        /// 重复字符串
-        /// </summary>
-        /// <param name="val">值</param>
-        /// <param name="num">重复的次数</param>
-        /// <returns>字符串</returns>
-        private static string StrRepeat(string val, int num)
-        {
-            var tmp = string.Empty;
-            for (var i = 0; i < num; i++)
-            {
-                tmp += val;
-            }
-            return tmp;
-        }
-
-        /// <summary>
-        /// 转义正则表达式字符
-        /// </summary>
-        /// <param name="str">需要转义的字符</param>
-        /// <returns>转义后的字符</returns>
-        private static string RegexQuote(string str)
-        {
-            string[] quote = { @"\", ".", "+", "*", "?", "[", "^", "]", "$", "(", ")", "{", "}", "=", "!", "<", ">", "|", ":", "-" };
-            foreach (var q in quote)
-            {
-                str = str.Replace(q, @"\" + q);
-            }
-            return str;
         }
 
         /// <summary>
@@ -310,7 +277,7 @@ namespace CatLib.Routing
             {
                 return string.Empty;
             }
-            return SEPARATORS.Contains(uri[0].ToString()) ? uri[0].ToString() : string.Empty;
+            return Separators.Contains(uri[0].ToString()) ? uri[0].ToString() : string.Empty;
         }
 
         /// <summary>

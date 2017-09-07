@@ -9,20 +9,18 @@
  * Document: http://catlib.io/
  */
 
-using System;
 using CatLib.API.Routing;
-using CatLib.API;
-using System.Reflection;
+using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
-using CatLib.Stl;
 
 namespace CatLib.Routing
 {
     /// <summary>
     /// 属性路由编译器
     /// </summary>
-    internal sealed class AttrRouteCompiler
+    public sealed class AttrRouteCompiler
     {
         /// <summary>
         /// 路由器
@@ -152,9 +150,9 @@ namespace CatLib.Routing
 
             foreach (var route in routeList)
             {
-                ComplieOptionsGroup(route, baseRouted);
                 ComplieOptionsWhere(route, controllerWhere);
                 ComplieOptionsDefaults(route, controllerDefaults);
+                ComplieOptionsGroup(route, baseRouted);
             }
         }
 
@@ -245,9 +243,9 @@ namespace CatLib.Routing
         /// <param name="routed">路由特性</param>
         private void ComplieOptions(IRoute route, RoutedAttribute routed)
         {
-            ComplieOptionsGroup(route, routed);
             ComplieOptionsWhere(route, ComplieDirection(routed.Where));
             ComplieOptionsDefaults(route, ComplieDirection(routed.Defaults));
+            ComplieOptionsGroup(route, routed);
         }
 
         /// <summary>
@@ -322,8 +320,7 @@ namespace CatLib.Routing
                 {
                     throw new RuntimeException("Routed options exception , can not resolve [" + input + "].");
                 }
-                data.Remove(fragment[0]);
-                data.Add(fragment[0], fragment[1]);
+                data[fragment[0]] = fragment[1];
             }
 
             return data;

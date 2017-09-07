@@ -9,41 +9,70 @@
  * Document: http://catlib.io/
  */
 
+#if CATLIB
+using System;
 using CatLib.API.Routing;
-using System.Collections;
 using System.Collections.Generic;
-using CatLib.API;
-using CatLib.API.Config;
 
 namespace CatLib.Routing
 {
     /// <summary>
     /// 路由服务
     /// </summary>
-    public sealed class RoutingProvider : ServiceProvider
+    public sealed class RoutingProvider : IServiceProvider
     {
+        /// <summary>
+        /// 默认的Scheme
+        /// </summary>
+        [Config]
+        public string DefaultScheme { get; set; }
+
+        /// <summary>
+        /// 是否进行路由编译
+        /// </summary>
+        [Config]
+        public bool RouterCompiler { get; set; }
+
+        /// <summary>
+        /// 会进行属性路由编译的程序集
+        /// </summary>
+        [Config]
+        public IList<string> CompilerAssembly { get; set; }
+
+        /// <summary>
+        /// 路由服务
+        /// </summary>
+        public RoutingProvider()
+        {
+            DefaultScheme = "catlib";
+            RouterCompiler = true;
+        }
+
         /// <summary>
         /// 执行路由编译，路由编译总是最后进行的
         /// </summary>
         /// <returns>迭代器</returns>
-        [Priority]
-        public override IEnumerator OnProviderProcess()
+        public void Init()
         {
-            return App.Make<Router>().RouterCompiler();
+            if (!RouterCompiler)
+            {
+                return;
+            }
+            var router = App.Make<Router>();
+            router.RouterCompiler();
         }
 
         /// <summary>
         /// 注册路由条目
         /// </summary>
-        public override void Register()
+        public void Register()
         {
-            App.Singleton<Router>((app, param) =>
+            App.Singleton<Router>((_, __) =>
             {
-                var router = new Router(App, App);
-                router.SetDefaultScheme("catlib");
+                var router = new Router(App.Handler, App.Handler);
+                router.SetDefaultScheme(DefaultScheme);
                 return router;
-
-            }).Alias<IRouter>().Alias("routing.router");
+            }).Alias<IRouter>();
 
             RegisterAttrRouteCompiler();
         }
@@ -53,33 +82,25 @@ namespace CatLib.Routing
         /// </summary>
         private void RegisterAttrRouteCompiler()
         {
-            App.Bind<AttrRouteCompiler>().OnResolving((bind, obj) =>
+            App.Bind<AttrRouteCompiler>().OnResolving((_, obj) =>
             {
-                var compiler = obj as AttrRouteCompiler;
-                if (compiler == null)
-                {
-                    return null;
-                }
+                var compiler = (AttrRouteCompiler)obj;
 
-                var containList = new List<string>()
+                var containList = new List<string>(CompilerAssembly ?? new List<string>())
                 {
-                    "Assembly-CSharp", "Assembly-CSharp-Editor-firstpass", "Assembly-CSharp-Editor", "CatLib", "CatLib.Tests"
+                    "Assembly-CSharp",
+                    "Assembly-CSharp-Editor-firstpass",
+                    "Assembly-CSharp-Editor",
+                    "CatLib",
+                    "CatLib.Unity",
+                    "CatLib.Tests"
                 };
 
-                var config = App.Make<IConfigManager>();
-                if (config != null)
-                {
-                    var reserved = config.Default.Get("routing.stripping.reserved", string.Empty);
-                    containList.AddRange(reserved.Split(';'));
-                }
-
-                compiler.OnStripping((assembly) =>
-                {
-                    return !containList.Contains(assembly.GetName().Name);
-                });
+                compiler.OnStripping(assembly => !containList.Contains(assembly.GetName().Name));
 
                 return obj;
             });
         }
     }
 }
+#endif

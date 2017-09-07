@@ -9,16 +9,15 @@
  * Document: http://catlib.io/
  */
 
-using System.Collections.Generic;
 using CatLib.API.Config;
-using CatLib.Stl;
+using System.Collections.Generic;
 
-namespace CatLib.Config
+namespace CatLib.Config.Locator
 {
     /// <summary>
     /// 代码配置定位器
     /// </summary>
-    internal sealed class CodeConfigLocator : IConfigLocator
+    public sealed class CodeConfigLocator : IConfigLocator
     {
         /// <summary>
         /// 配置字典
@@ -41,8 +40,7 @@ namespace CatLib.Config
         public void Set(string name, string value)
         {
             Guard.NotNull(name, "name");
-            dict.Remove(name);
-            dict.Add(name, value);
+            dict[name] = value;
         }
 
         /// <summary>

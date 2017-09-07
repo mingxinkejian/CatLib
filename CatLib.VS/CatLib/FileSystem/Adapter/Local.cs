@@ -12,16 +12,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using CatLib.API;
-using CatLib.Stl;
 using SIO = System.IO;
 
-namespace CatLib.FileSystem
+namespace CatLib.FileSystem.Adapter
 {
     /// <summary>
     /// 本地驱动器
     /// </summary>
-    internal class Local : IFileSystemAdapter
+    public class Local : IFileSystemAdapter
     {
         /// <summary>
         /// 根目录
@@ -41,7 +39,7 @@ namespace CatLib.FileSystem
                 throw new ArgumentException("Path need rooted [" + root + "].", "root");
             }
 
-            this.root = root;
+            this.root = Path.GetFullPath(root);
         }
 
         /// <summary>
@@ -317,7 +315,7 @@ namespace CatLib.FileSystem
         {
             if (!path.Contains(root))
             {
-                throw new RuntimeException("The path range is beyond root path [" + path + "].");
+                throw new RuntimeException("The path range is beyond root path. root path [" + root + "], your path [" + path + "].");
             }
         }
 

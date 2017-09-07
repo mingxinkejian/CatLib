@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using CatLib.FileSystem;
+using CatLib.FileSystem.Adapter;
 using SIO = System.IO;
 #if UNITY_EDITOR || NUNIT
 using NUnit.Framework;
@@ -21,7 +22,6 @@ using TestInitialize = NUnit.Framework.SetUpAttribute;
 using TestCleanup = NUnit.Framework.TearDownAttribute;
 #else
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Category = Microsoft.VisualStudio.TestTools.UnitTesting.DescriptionAttribute;
 #endif
 
 namespace CatLib.Tests.FileSystem
@@ -39,7 +39,7 @@ namespace CatLib.Tests.FileSystem
         {
             Env(() =>
             {
-                local.Write("DirectoryTests.Directory/helloworld" , GetByte("hello world"));
+                local.Write("DirectoryTests.Directory/helloworld", GetByte("hello world"));
                 local.Write("DirectoryTests.Directory/helloworld2", GetByte("hello world2"));
                 local.MakeDir("DirectoryTests.Directory/helloworld-dir");
 
@@ -47,13 +47,13 @@ namespace CatLib.Tests.FileSystem
                 Assert.AreEqual(3, handlers.Length);
 
                 var dict = new Dictionary<string, bool>();
-                dict.Add("DirectoryTests.Directory\\helloworld" , false);
+                dict.Add("DirectoryTests.Directory\\helloworld", false);
                 dict.Add("DirectoryTests.Directory\\helloworld2", false);
                 dict.Add("DirectoryTests.Directory\\helloworld-dir", false);
 
                 foreach (var handler in handlers)
                 {
-                    dict[handler.Path.Substring(SIO.Path.Combine(Environment.CurrentDirectory, "FileSystemTest").Length + 1)] = true;
+                    dict[handler.Path.Substring(SIO.Path.Combine(System.Environment.CurrentDirectory, "FileSystemTest").Length + 1)] = true;
                 }
 
                 foreach (var kv in dict)
@@ -68,7 +68,7 @@ namespace CatLib.Tests.FileSystem
 
         private void Env(Action action)
         {
-            var path = SIO.Path.Combine(Environment.CurrentDirectory, "FileSystemTest");
+            var path = SIO.Path.Combine(System.Environment.CurrentDirectory, "FileSystemTest");
             if (SIO.Directory.Exists(path))
             {
                 SIO.Directory.Delete(path, true);
@@ -77,7 +77,7 @@ namespace CatLib.Tests.FileSystem
 
             local = new Local(path);
             local.MakeDir("DirectoryTests.Directory");
-            handlerDir = new Directory(new CatLib.FileSystem.FileSystem(local), "DirectoryTests.Directory");
+            handlerDir = new Directory(new global::CatLib.FileSystem.FileSystem(local), "DirectoryTests.Directory");
 
             Assert.AreEqual(true, handlerDir.IsExists);
 

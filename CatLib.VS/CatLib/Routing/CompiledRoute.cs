@@ -63,6 +63,7 @@ namespace CatLib.Routing
         /// 转为字符串
         /// </summary>
         /// <returns>编译后的字符串表示信息</returns>
+        [ExcludeFromCodeCoverage]
         public override string ToString()
         {
             var builder = new StringBuilder();

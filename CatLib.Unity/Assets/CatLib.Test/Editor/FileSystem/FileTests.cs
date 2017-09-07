@@ -11,6 +11,7 @@
 
 using System;
 using CatLib.FileSystem;
+using CatLib.FileSystem.Adapter;
 using SIO = System.IO;
 #if UNITY_EDITOR || NUNIT
 using NUnit.Framework;
@@ -20,7 +21,6 @@ using TestInitialize = NUnit.Framework.SetUpAttribute;
 using TestCleanup = NUnit.Framework.TearDownAttribute;
 #else
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Category = Microsoft.VisualStudio.TestTools.UnitTesting.DescriptionAttribute;
 #endif
 
 namespace CatLib.Tests.FileSystem
@@ -38,7 +38,7 @@ namespace CatLib.Tests.FileSystem
         {
             Env(() =>
             {
-                Assert.AreEqual("hello world",GetString(local.Read("FileTests.TestFileHandler")));
+                Assert.AreEqual("hello world", GetString(local.Read("FileTests.TestFileHandler")));
                 handlerFile.Write(GetByte("ni hao"));
                 Assert.AreEqual("ni hao", GetString(local.Read("FileTests.TestFileHandler")));
                 Assert.AreEqual("ni hao", GetString(handlerFile.Read()));
@@ -56,7 +56,7 @@ namespace CatLib.Tests.FileSystem
 
         private void Env(Action action)
         {
-            var path = SIO.Path.Combine(Environment.CurrentDirectory, "FileSystemTest");
+            var path = SIO.Path.Combine(System.Environment.CurrentDirectory, "FileSystemTest");
             if (SIO.Directory.Exists(path))
             {
                 SIO.Directory.Delete(path, true);
@@ -65,7 +65,7 @@ namespace CatLib.Tests.FileSystem
 
             local = new Local(path);
             local.Write("FileTests.TestFileHandler", GetByte("hello world"));
-            handlerFile = new File(new CatLib.FileSystem.FileSystem(local), "FileTests.TestFileHandler");
+            handlerFile = new File(new global::CatLib.FileSystem.FileSystem(local), "FileTests.TestFileHandler");
 
             Assert.AreEqual(true, handlerFile.IsExists);
 

@@ -9,16 +9,15 @@
  * Document: http://catlib.io/
  */
 
-using System.IO;
 using CatLib.API.FileSystem;
-using CatLib.Stl;
+using System.IO;
 
 namespace CatLib.FileSystem
 {
     /// <summary>
     /// 文件/文件夹句柄
     /// </summary>
-    internal abstract class Handler : IHandler
+    public abstract class Handler : IHandler
     {
         /// <summary>
         /// 文件/文件夹路径
@@ -30,7 +29,10 @@ namespace CatLib.FileSystem
         /// </summary>
         public string Path
         {
-            get { return path; }
+            get
+            {
+                return path;
+            }
         }
 
         /// <summary>
@@ -43,7 +45,10 @@ namespace CatLib.FileSystem
         /// </summary>
         protected FileSystem FileSystem
         {
-            get { return fileSystem; }
+            get
+            {
+                return fileSystem;
+            }
         }
 
         /// <summary>

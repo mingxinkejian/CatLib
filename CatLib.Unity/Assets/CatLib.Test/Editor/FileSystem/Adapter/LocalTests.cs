@@ -11,8 +11,7 @@
 
 using System;
 using System.IO;
-using CatLib.API;
-using CatLib.FileSystem;
+using CatLib.FileSystem.Adapter;
 using SIO = System.IO;
 #if UNITY_EDITOR || NUNIT
 using NUnit.Framework;
@@ -22,7 +21,6 @@ using TestInitialize = NUnit.Framework.SetUpAttribute;
 using TestCleanup = NUnit.Framework.TearDownAttribute;
 #else
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Category = Microsoft.VisualStudio.TestTools.UnitTesting.DescriptionAttribute;
 #endif
 
 namespace CatLib.Tests.FileSystem
@@ -38,7 +36,7 @@ namespace CatLib.Tests.FileSystem
         [TestInitialize]
         public void TestInitialize()
         {
-            var path = Path.Combine(Environment.CurrentDirectory, "FileSystemTest");
+            var path = Path.Combine(System.Environment.CurrentDirectory, "FileSystemTest");
             if (SIO.Directory.Exists(path))
             {
                 SIO.Directory.Delete(path, true);
@@ -51,7 +49,7 @@ namespace CatLib.Tests.FileSystem
         [TestCleanup]
         public void TestCleanup()
         {
-            var path = Path.Combine(Environment.CurrentDirectory, "FileSystemTest");
+            var path = Path.Combine(System.Environment.CurrentDirectory, "FileSystemTest");
             if (SIO.Directory.Exists(path))
             {
                 SIO.Directory.Delete(path, true);
@@ -515,7 +513,7 @@ namespace CatLib.Tests.FileSystem
 
             var lst = local.GetList("GetListTest");
             Assert.AreEqual(1, lst.Length);
-            Assert.AreEqual("\\FileSystemTest\\GetListTest\\test.txt", lst[0].Substring(Environment.CurrentDirectory.Length));
+            Assert.AreEqual("\\FileSystemTest\\GetListTest\\test.txt", lst[0].Substring(System.Environment.CurrentDirectory.Length));
 
             Assert.AreEqual(true, local.GetList("").Length > 0);
             Assert.AreEqual(true, local.GetList(null).Length > 0);
@@ -528,7 +526,7 @@ namespace CatLib.Tests.FileSystem
             local.Write("GetListWithFile/GetListWithFile.txt", GetByte("test"));
             var lst = local.GetList("GetListWithFile/GetListWithFile.txt");
             Assert.AreEqual(1, lst.Length);
-            Assert.AreEqual("\\FileSystemTest\\GetListWithFile\\GetListWithFile.txt", lst[0].Substring(Environment.CurrentDirectory.Length));
+            Assert.AreEqual("\\FileSystemTest\\GetListWithFile\\GetListWithFile.txt", lst[0].Substring(System.Environment.CurrentDirectory.Length));
         }
 
         [TestMethod]

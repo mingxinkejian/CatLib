@@ -9,23 +9,34 @@
  * Document: http://catlib.io/
  */
 
+#if CATLIB
 using CatLib.API.Config;
+using CatLib.API.Converters;
+using CatLib.Config.Locator;
 
 namespace CatLib.Config
 {
     /// <summary>
-    /// 配置服务提供商
+    /// 配置服务提供者
     /// </summary>
-    public sealed class ConfigProvider : ServiceProvider
+    public sealed class ConfigProvider : IServiceProvider
     {
+        /// <summary>
+        /// 初始化
+        /// </summary>
+        [Priority(1)]
+        public void Init()
+        {
+            App.Make<IConfigManager>();
+        }
+
         /// <summary>
         /// 注册配置服务
         /// </summary>
-        public override void Register()
+        public void Register()
         {
             RegisterManager();
-            RegisterConfig();
-            RegisterLocator();
+            RegisterDefaultConfig();
         }
 
         /// <summary>
@@ -33,40 +44,31 @@ namespace CatLib.Config
         /// </summary>
         private void RegisterManager()
         {
-            App.Singleton<ConfigManager>().Alias<IConfigManager>().OnResolving((bind, obj) =>
+            App.Singleton<ConfigManager>().Alias<IConfigManager>().OnResolving((_, obj) =>
             {
-                var configManager = obj as ConfigManager;
-                if (configManager == null)
-                {
-                    return null;
-                }
-
+                var configManager = (ConfigManager)obj;
                 configManager.Extend(() =>
                 {
-                    var config = App.Make<IConfig>();
-                    config.Reg(App.Make<CodeConfigLocator>());
+                    var converters = App.Make<IConverters>();
+                    if (converters == null)
+                    {
+                        throw new RuntimeException("IConverters Not registered bind");
+                    }
+                    var config = new Config(converters, new CodeConfigLocator());
                     return config;
                 });
 
                 return configManager;
-            }).Alias("config.manager");
+            });
         }
 
         /// <summary>
-        /// 注册配置
+        /// 注册默认的配置
         /// </summary>
-        private void RegisterConfig()
+        private void RegisterDefaultConfig()
         {
-            App.Bind<Config>((app, param) => new Config()).Alias<IConfig>().Alias("config.container");
-        }
-
-        /// <summary>
-        /// 注册定位器
-        /// </summary>
-        private void RegisterLocator()
-        {
-            App.Bind<CodeConfigLocator>().Alias("config.locator.code");
-            App.Singleton<UnitySettingLocator>().Alias("config.locator.unity");
+            App.Bind<IConfig>((container, _) => container.Make<IConfigManager>().Default);
         }
     }
 }
+#endif

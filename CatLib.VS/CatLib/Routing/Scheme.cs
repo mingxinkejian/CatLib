@@ -9,6 +9,7 @@
  * Document: http://catlib.io/
  */
 
+using CatLib.API.Routing;
 using System.Collections.Generic;
 
 namespace CatLib.Routing
@@ -33,7 +34,10 @@ namespace CatLib.Routing
         /// </summary>
         public string Name
         {
-            get { return name; }
+            get
+            {
+                return name;
+            }
         }
 
         /// <summary>

@@ -9,35 +9,55 @@
  * Document: http://catlib.io/
  */
 
-using System.Collections;
-using CatLib.API;
+#if CATLIB
+using CatLib.API.Config;
 using CatLib.API.FileSystem;
+using CatLib.FileSystem.Adapter;
 
 namespace CatLib.FileSystem
 {
     /// <summary>
-    /// 文件系统服务提供商
+    /// 文件系统服务提供者
     /// </summary>
-    public sealed class FileSystemProvider : ServiceProvider
+    public sealed class FileSystemProvider : IServiceProvider
     {
         /// <summary>
-        /// 服务提供商进程
+        /// 默认驱动名字
+        /// </summary>
+        [Config]
+        public string DefaultDevice { get; set; }
+
+        /// <summary>
+        /// 默认路径
+        /// </summary>
+        [Config]
+        public string DefaultPath { get; set; }
+
+        /// <summary>
+        /// 文件系统服务提供者
+        /// </summary>
+        public FileSystemProvider()
+        {
+            DefaultDevice = "local";
+        }
+
+        /// <summary>
+        /// 服务提供者进程
         /// </summary>
         /// <returns>迭代器</returns>
-        [Priority]
-        public override IEnumerator OnProviderProcess()
+        [Priority(10)]
+        public void Init()
         {
             InitRegisterLocalDriver();
-            return base.OnProviderProcess();
         }
 
         /// <summary>
         /// 注册文件系统服务
         /// </summary>
-        public override void Register()
+        public void Register()
         {
             RegisterManager();
-            RegisterAdapter();
+            RegisterDefaultFileSystem();
         }
 
         /// <summary>
@@ -45,15 +65,27 @@ namespace CatLib.FileSystem
         /// </summary>
         private void RegisterManager()
         {
-            App.Singleton<FileSystemManager>().Alias<IFileSystemManager>().Alias("filesystem.manager");
+            App.Singleton<FileSystemManager>().Alias<IFileSystemManager>().OnResolving((_, obj) =>
+            {
+                var manager = (FileSystemManager) obj;
+                manager.SetDefaultDevice(DefaultDevice);
+
+                var configManager = App.Make<IConfigManager>();
+                configManager.Default.SafeWatch("FileSystemProvider.DefaultDevice", (name) =>
+                {
+                    manager.SetDefaultDevice(name.ToString());
+                });
+
+                return obj;
+            });
         }
 
         /// <summary>
-        /// 注册适配器
+        /// 注册默认的文件系统
         /// </summary>
-        private void RegisterAdapter()
+        private void RegisterDefaultFileSystem()
         {
-            App.Bind<Local>().Alias("filesystem.adapter.local");
+            App.Bind<IFileSystem>((container, _) => container.Make<IFileSystemManager>().Default);
         }
 
         /// <summary>
@@ -61,13 +93,11 @@ namespace CatLib.FileSystem
         /// </summary>
         private void InitRegisterLocalDriver()
         {
-            var storage = App.Make<IFileSystemManager>();
-            var env = App.Make<IEnv>();
-
-            if (env != null)
+            if (!string.IsNullOrEmpty(DefaultPath))
             {
-                storage.Extend(() => new FileSystem(new Local(env.AssetPath)));
+                App.Make<IFileSystemManager>().Extend(() => new FileSystem(new Local(DefaultPath)));
             }
         }
     }
 }
+#endif

@@ -9,10 +9,9 @@
  * Document: http://catlib.io/
  */
 
-using System;
 using CatLib.API.Routing;
+using System;
 using System.Collections.Generic;
-using CatLib.Stl;
 
 namespace CatLib.Routing
 {
@@ -36,7 +35,10 @@ namespace CatLib.Routing
         /// </summary>
         public IRoute Route
         {
-            get { return route; }
+            get
+            {
+                return route;
+            }
         }
 
         /// <summary>
@@ -49,7 +51,10 @@ namespace CatLib.Routing
         /// </summary>
         public System.Uri Uri
         {
-            get { return uri.Original; }
+            get
+            {
+                return uri.Original;
+            }
         }
 
         /// <summary>
@@ -57,13 +62,16 @@ namespace CatLib.Routing
         /// </summary>
         internal Uri RouteUri
         {
-            get { return uri; }
+            get
+            {
+                return uri;
+            }
         }
 
         /// <summary>
         /// 上下文
         /// </summary>
-        private readonly object context;
+        private object context;
 
         /// <summary>
         /// 构建一个请求
@@ -97,6 +105,15 @@ namespace CatLib.Routing
         }
 
         /// <summary>
+        /// 替换上下文
+        /// </summary>
+        /// <param name="context">上下文</param>
+        public void ReplaceContext(object context)
+        {
+            this.context = context;
+        }
+
+        /// <summary>
         /// 获取字符串附加物
         /// </summary>
         /// <param name="key">键</param>
@@ -109,7 +126,20 @@ namespace CatLib.Routing
             {
                 return defaultValue;
             }
-            return parameters.ContainsKey(key) ? parameters[key] : defaultValue;
+
+            string value;
+            return parameters.TryGetValue(key, out value) ? value : defaultValue;
+        }
+
+        /// <summary>
+        /// 替换参数
+        /// </summary>
+        /// <param name="key">键</param>
+        /// <param name="value">值</param>
+        public void ReplaceParameter(string key, string value)
+        {
+            Guard.Requires<ArgumentNullException>(key != null);
+            parameters[key] = value;
         }
 
         /// <summary>
@@ -223,19 +253,8 @@ namespace CatLib.Routing
         /// <param name="parameters">参数字典</param>
         public Request SetParameters(Dictionary<string, string> parameters)
         {
+            Guard.Requires<ArgumentNullException>(parameters != null);
             this.parameters = parameters;
-            return this;
-        }
-
-        /// <summary>
-        /// 增加参数
-        /// </summary>
-        /// <param name="key">键</param>
-        /// <param name="val">值</param>
-        public Request AddParameters(string key, string val)
-        {
-            parameters.Remove(key);
-            parameters.Add(key, val);
             return this;
         }
 
@@ -248,6 +267,15 @@ namespace CatLib.Routing
         {
             this.route = route;
             return this;
+        }
+
+        /// <summary>
+        /// 转为字符串
+        /// </summary>
+        /// <returns>转为字符串</returns>
+        public override string ToString()
+        {
+            return uri.Original.OriginalString;
         }
     }
 }

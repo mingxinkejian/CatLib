@@ -1,5 +1,16 @@
-﻿using System;
-using CatLib.FileSystem;
+﻿/*
+ * This file is part of the CatLib package.
+ *
+ * (c) Yu Bin <support@catlib.io>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ * 
+ * Document: http://catlib.io/
+ */
+
+using System;
+using CatLib.FileSystem.Adapter;
 using SIO = System.IO;
 #if UNITY_EDITOR || NUNIT
 using NUnit.Framework;
@@ -9,7 +20,6 @@ using TestInitialize = NUnit.Framework.SetUpAttribute;
 using TestCleanup = NUnit.Framework.TearDownAttribute;
 #else
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Category = Microsoft.VisualStudio.TestTools.UnitTesting.DescriptionAttribute;
 #endif
 
 namespace CatLib.Tests.FileSystem
@@ -17,7 +27,7 @@ namespace CatLib.Tests.FileSystem
     [TestClass]
     public class FileSystemTests
     {
-        private CatLib.FileSystem.FileSystem fileSystem;
+        private global::CatLib.FileSystem.FileSystem fileSystem;
 
         [TestMethod]
         public void FileSystemCreateDirTest()
@@ -36,7 +46,7 @@ namespace CatLib.Tests.FileSystem
 
         private void Env(Action action)
         {
-            var path = SIO.Path.Combine(Environment.CurrentDirectory, "FileSystemTest");
+            var path = SIO.Path.Combine(System.Environment.CurrentDirectory, "FileSystemTest");
             if (SIO.Directory.Exists(path))
             {
                 SIO.Directory.Delete(path, true);
@@ -44,7 +54,7 @@ namespace CatLib.Tests.FileSystem
             SIO.Directory.CreateDirectory(path);
 
             var local = new Local(path);
-            fileSystem = new CatLib.FileSystem.FileSystem(local);
+            fileSystem = new global::CatLib.FileSystem.FileSystem(local);
 
             action.Invoke();
 

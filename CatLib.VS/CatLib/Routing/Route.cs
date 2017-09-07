@@ -9,11 +9,8 @@
  * Document: http://catlib.io/
  */
 
-using System;
-using CatLib.API;
 using CatLib.API.Routing;
-using CatLib.API.Stl;
-using CatLib.Stl;
+using System;
 
 namespace CatLib.Routing
 {
@@ -37,7 +34,10 @@ namespace CatLib.Routing
         /// </summary>
         internal Uri Uri
         {
-            get { return uri; }
+            get
+            {
+                return uri;
+            }
         }
 
         /// <summary>
@@ -55,7 +55,10 @@ namespace CatLib.Routing
         /// </summary>
         internal RouteOptions Options
         {
-            get { return options; }
+            get
+            {
+                return options;
+            }
         }
 
         /// <summary>
@@ -288,11 +291,11 @@ namespace CatLib.Routing
         {
             if (action.Type == RouteAction.RouteTypes.CallBack)
             {
-                action.Action.Invoke(request, response);
+                ThroughRouteMiddleware(request, response, null, ActionCall);
             }
             else if (action.Type == RouteAction.RouteTypes.ControllerCall)
             {
-                ControllerCall(request, response);
+                ThroughControllerMiddleware(request, response, ControllerCallRouteMiddlewareWrap);
             }
             else
             {
@@ -301,13 +304,48 @@ namespace CatLib.Routing
         }
 
         /// <summary>
-        /// 控制器调用
+        /// 通过路由中间件
         /// </summary>
         /// <param name="request">请求</param>
         /// <param name="response">响应</param>
-        private void ControllerCall(Request request, Response response)
+        /// <param name="context">上下文</param>
+        /// <param name="callback">完成中间件的回调</param>
+        private void ThroughRouteMiddleware(Request request, Response response, object context, Action<Request, Response, object> callback)
         {
-            var controller = container.Make(action.Controller);
+            var middleware = GatherMiddleware();
+            if (middleware != null)
+            {
+                middleware.Do(request, response, (req, res) =>
+                {
+                    callback.Invoke(request, response, context);
+                });
+            }
+            else
+            {
+                callback.Invoke(request, response, context);
+            }
+        }
+
+        /// <summary>
+        /// 行为调用
+        /// </summary>
+        /// <param name="request">请求</param>
+        /// <param name="response">响应</param>
+        /// <param name="context">上下文</param>
+        private void ActionCall(Request request, Response response, object context)
+        {
+            action.Action.Invoke(request, response);
+        }
+
+        /// <summary>
+        /// 通过控制器中间件
+        /// </summary>
+        /// <param name="request">请求</param>
+        /// <param name="response">响应</param>
+        /// <param name="callback">回调</param>
+        private void ThroughControllerMiddleware(Request request, Response response, Action<Request, Response, object> callback)
+        {
+            var controller = container.Make(container.Type2Service(action.Controller));
 
             if (controller == null)
             {
@@ -324,13 +362,35 @@ namespace CatLib.Routing
             {
                 mid.Middleware.Do(request, response, (req, res) =>
                 {
-                    container.Call(controller, action.Func, req, res);
+                    callback.Invoke(request, response, controller);
                 });
             }
             else
             {
-                container.Call(controller, action.Func, request, response);
+                callback.Invoke(request, response, controller);
             }
+        }
+
+        /// <summary>
+        /// 控制器调用路由中间件包装
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="response"></param>
+        /// <param name="context"></param>
+        private void ControllerCallRouteMiddlewareWrap(Request request, Response response, object context)
+        {
+            ThroughRouteMiddleware(request, response, context, ControllerCall);
+        }
+
+        /// <summary>
+        /// 控制器调用
+        /// </summary>
+        /// <param name="request">请求</param>
+        /// <param name="response">响应</param>
+        /// <param name="context">上下文</param>
+        private void ControllerCall(Request request, Response response, object context)
+        {
+            container.Call(context, action.Func, request, response);
         }
 
         /// <summary>

@@ -9,9 +9,7 @@
  * Document: http://catlib.io/
  */
 
-using CatLib.API.Stl;
 using CatLib.API.Routing;
-using CatLib.Stl;
 
 namespace CatLib.Tests.Routing
 {
@@ -39,6 +37,12 @@ namespace CatLib.Tests.Routing
         public void Call(IRequest request, IResponse response)
         {
             response.SetContext("RoutingMiddleware.Call");
+        }
+
+        [Routed(Group = "RoutingMiddleware.ClassMiddlewareThenRouteMiddleTest")]
+        public void ClassMiddlewareThenRouteMiddleTest(IRequest request, IResponse response)
+        {
+            response.SetContext("ClassMiddlewareThenRouteMiddleTest");
         }
     }
 }
